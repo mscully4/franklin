@@ -4,7 +4,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
 import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
-import { openDb } from "./src/db.js";
+import { openDb } from "./src/db/index.js";
 import { SCOUT_INTERVALS_MS, readJson } from "./src/config.js";
 import { createLogger } from "./src/logger.js";
 const log = createLogger("server");
@@ -145,8 +145,8 @@ app.get("/api/state", (_req, res) => {
   const scheduledTasks = (readJson<Array<{ id: string; every: string; kind?: string; display_description?: string; context: { objective?: string; skill?: string }; last_run?: string }>>(join(STATE, "scheduled_tasks.json")) ?? [])
     .map((t) => ({ id: t.id, every: t.every, kind: t.kind ?? "worker", description: t.display_description ?? t.context?.skill ?? t.id, lastRun: t.last_run ?? null, lastRunAgo: timeAgo(t.last_run ?? null) }));
 
-  // Inbox stats from DB
-  const pending = db.getPendingSlackEvents().length;
+  // Slack inbox pipeline was removed — keep field for dashboard compat
+  const pending = 0;
 
   res.json({
     running,
