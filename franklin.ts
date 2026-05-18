@@ -21,6 +21,7 @@ import { SCOUT_INTERVALS_MS, readJson, readJsonWithSchema, writeJson } from "./s
 import { SettingsSchema, ScheduledTaskSchema, DelegationSchema } from "./src/config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation } from "./src/config.js";
 import { initTaskManager, spawnBackgroundTask, reapTasks, writeInflightSignals } from "./src/task-manager.js";
+import { ackSqsMessages } from "./src/sqs-ack.js";
 import log from "./src/logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -408,7 +409,13 @@ function runScriptTask(task: DelegationTask): WorkerResult {
   let status: WorkerResult["status"] = "ok";
   let error: string | null = null;
   try {
-    stdout = execSync(task.command, { cwd: ROOT, timeout: timeoutMs, encoding: "utf-8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+    stdout = execSync(task.command, {
+      cwd: ROOT,
+      timeout: timeoutMs,
+      encoding: "utf-8",
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, FRANKLIN_TASK_CONTEXT: JSON.stringify(task.context) },
+    }).trim();
   } catch (err: unknown) {
     status = "error";
     const e = err as { status?: number; killed?: boolean; stderr?: string; stdout?: string };
@@ -441,6 +448,13 @@ function dispatchTasks(delegation: Delegation): void {
         log.info(` markSurfaced: ${task.mark_surfaced.id}`);
         sdb.markSurfaced(task.mark_surfaced.id, task.mark_surfaced.state);
         sdb.close();
+      }
+      // Ack SQS message if this script task processed one
+      const sqsId = task.context.sqs_message_id as string | undefined;
+      if (result.status === "ok" && sqsId) {
+        ackSqsMessages([sqsId]).catch((e: unknown) => {
+          log.error(`SQS ack failed for script task ${task.id}: ${(e as Error).message}`);
+        });
       }
       // Update scheduled task bookkeeping inline for scripts
       const schedId = task.context.scheduled_task_id as string | undefined;
@@ -547,6 +561,16 @@ function runCycle(startedAt: string): void {
     if (r.scheduledTaskId) {
       updateScheduledTaskResult(r.scheduledTaskId, r.status);
     }
+  }
+
+  // Ack successfully completed SQS tasks — delete from queue now that processing is done
+  const sqsAcks = reaped.completed
+    .filter((r) => r.status === "ok" && r.sqsMessageId)
+    .map((r) => r.sqsMessageId!);
+  if (sqsAcks.length > 0) {
+    ackSqsMessages(sqsAcks).catch((e: unknown) => {
+      log.error(`SQS ack failed: ${(e as Error).message?.slice(0, 200)}`);
+    });
   }
 
   // Generate deterministic tasks
