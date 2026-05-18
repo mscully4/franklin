@@ -267,6 +267,7 @@ function writeDiscordHeartbeat(status: string): void {
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
       GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildMessageReactions,
     ],
   });
 
@@ -321,6 +322,54 @@ function writeDiscordHeartbeat(status: string): void {
     } catch (err) {
       log.warn(`[discord] failed to react to message: ${(err as Error).message}`);
     }
+  });
+
+  client.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return;
+
+    // Fetch partials if needed
+    const fullReaction = reaction.partial ? await reaction.fetch().catch(() => null) : reaction;
+    if (!fullReaction) return;
+    const msg = fullReaction.message.partial
+      ? await fullReaction.message.fetch().catch(() => null)
+      : fullReaction.message;
+    if (!msg) return;
+
+    // Only handle reactions on embeds with Franklin metadata in the footer
+    const footer = msg.embeds[0]?.footer?.text;
+    if (!footer) return;
+
+    let meta: Record<string, unknown>;
+    try {
+      meta = JSON.parse(footer);
+    } catch {
+      return;
+    }
+    if (!meta.sub_type) return;
+
+    const emoji = fullReaction.emoji.name ?? "";
+    const userId = typeof user.id === "string" ? user.id : "";
+    const reactionTs = `reaction:${msg.id}:${userId}:${emoji}`;
+
+    db.insertSlackEvent({
+      event_ts: reactionTs,
+      channel: msg.channelId,
+      channel_type: "reaction",
+      user_id: userId,
+      type: "reaction",
+      reaction: emoji,
+      raw: {
+        message_id: msg.id,
+        channel_id: msg.channelId,
+        user_id: userId,
+        emoji,
+        reacted_at: new Date().toISOString(),
+        sub_type: meta.sub_type,
+        meta,
+      },
+    });
+
+    log.info(`[discord] reaction ${emoji} on message ${msg.id} from ${userId} (sub_type=${meta.sub_type})`);
   });
 
   client.on("error", (err) => {
