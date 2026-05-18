@@ -261,7 +261,7 @@ describe("EventHandlerSchema", () => {
       event_type: "reaction",
       sub_type: "deal-dash",
       kind: "script" as const,
-      command: "npx tsx src/actions/sns-publish-feedback.ts",
+      command: "npx tsx src/actions/discord-send.ts",
     };
     assert.ok(EventHandlerSchema.safeParse(data).success);
   });

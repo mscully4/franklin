@@ -101,40 +101,6 @@ export const DelegationSchema = z.object({
 
 export type Delegation = z.infer<typeof DelegationSchema>;
 
-// ── Messaging (SQS inbox / SNS outbox) ──────────────────────────────────────
-
-export const MessageType = {
-  DealDash: "deal-dash",
-} as const;
-
-export type MessageType = (typeof MessageType)[keyof typeof MessageType];
-
-const messageTypeValues = Object.values(MessageType) as [MessageType, ...MessageType[]];
-export const MessageTypeSchema = z.enum(messageTypeValues);
-
-// Message sent by external services → franklin-inbox SQS queue
-export const InboundMessageSchema = z.object({
-  type: MessageTypeSchema,
-  subType: z.string().nullable(),
-  source: z.string(),
-  traceId: z.string().optional(),
-  payload: z.record(z.string(), z.unknown()),
-});
-
-export type InboundMessage = z.infer<typeof InboundMessageSchema>;
-
-// Message published by Franklin → franklin-outbox SNS topic.
-// The `type` field MUST also be set as an SNS MessageAttribute so subscribers
-// can filter on it via SNS filter policies.
-export const OutboundMessageSchema = z.object({
-  type: MessageTypeSchema,
-  subType: z.string().nullable(),
-  traceId: z.string().optional(),
-  payload: z.record(z.string(), z.unknown()),
-});
-
-export type OutboundMessage = z.infer<typeof OutboundMessageSchema>;
-
 // ── Event handlers (state/event_handlers.json) ───────────────────────────────
 
 export const EventHandlerSchema = z.object({
