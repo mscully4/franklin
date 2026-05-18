@@ -14,7 +14,7 @@ import { execSync } from "child_process";
 import { writeFileSync, mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 import { readJson } from "../config.js";
 import { createLogger } from "../logger.js";
 const log = createLogger("gmail");

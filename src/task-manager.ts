@@ -13,7 +13,7 @@
 import { spawn } from "child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, createWriteStream } from "fs";
 import { join } from "path";
-import { openDb } from "./db.js";
+import { openDb } from "./db/index.js";
 import { readJson, readJsonWithSchema, writeJson, resolveTaskTimeout, WorkerResultSchema } from "./config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry } from "./config.js";
 import log from "./logger.js";

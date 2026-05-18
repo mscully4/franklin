@@ -3,7 +3,7 @@ import { mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 import {
   readJson, readJsonWithSchema, writeJson,
   ScheduledTaskSchema,

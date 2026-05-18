@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 
 const OWNER = "U_OWNER";
 const AUTHORIZED = "U_AUTH";

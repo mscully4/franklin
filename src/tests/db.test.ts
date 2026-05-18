@@ -1,6 +1,6 @@
 import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 
 // Use in-memory DB for all tests
 function testDb() {

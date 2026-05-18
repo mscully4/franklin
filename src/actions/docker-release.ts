@@ -11,7 +11,7 @@
 
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 import { removeDockerOverride } from "../docker_override.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

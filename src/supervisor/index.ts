@@ -5,7 +5,7 @@ import { fileURLToPath } from "url";
 import { SCOUT_INTERVALS_MS, readJson, readJsonWithSchema, writeJson, DelegationSchema } from "../config.js";
 import { initTaskManager, reapTasks, writeInflightSignals } from "../task-manager.js";
 import { ackSqsMessages } from "../sqs-ack.js";
-import { openDb } from "../db.js";
+import { openDb } from "../db/index.js";
 import { checkLock, writeLock, deleteLock, readLock } from "./lock.js";
 import { readLastRun, writeLastRun, isScoutDue, runStartupChecks, runScout } from "./scouts.js";
 import {
@@ -143,7 +143,7 @@ function runCycle(startedAt: string): void {
     if (allTasks.length) {
       const merged = { generated_at: new Date().toISOString(), tasks: allTasks };
       writeJson(DELEGATION_FILE, merged);
-      log.info(` Dispatching ${allTasks.length} task(s) (${dmTasks.length} dm, ${scheduledTasks.length} sched, ${brainTasks.length} brain)...`);
+      log.info(` Dispatching ${allTasks.length} task(s) (${scheduledTasks.length} sched, ${brainTasks.length} brain)...`);
       dispatchTasks(merged);
     } else {
       log.debug("No tasks this cycle");
