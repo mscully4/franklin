@@ -3,8 +3,7 @@ import { mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { SCOUT_INTERVALS_MS, readJson, readJsonWithSchema, writeJson, DelegationSchema } from "../config.js";
-import { initTaskManager, reapTasks, writeInflightSignals } from "../task-manager.js";
-import { ackSqsMessages } from "../sqs-ack.js";
+import { initTaskManager, reapTasks, writeInflightSignals } from "./task-manager.js";
 import { openDb } from "../db/index.js";
 import { checkLock, writeLock, deleteLock, readLock } from "./lock.js";
 import { readLastRun, writeLastRun, isScoutDue, runStartupChecks, runScout } from "./scouts.js";
@@ -108,14 +107,6 @@ function runCycle(startedAt: string): void {
     const reaped = reapTasks();
     for (const r of reaped.completed) {
       if (r.scheduledTaskId) updateScheduledTaskResult(r.scheduledTaskId, r.status);
-    }
-    const sqsAcks = reaped.completed
-      .filter((r) => r.status === "ok" && r.sqsMessageId)
-      .map((r) => r.sqsMessageId!);
-    if (sqsAcks.length > 0) {
-      ackSqsMessages(sqsAcks).catch((e: unknown) => {
-        log.error(`SQS ack failed: ${(e as Error).message?.slice(0, 200)}`);
-      });
     }
 
     const scheduledTasks = generateScheduledTasks();

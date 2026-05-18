@@ -9,8 +9,7 @@ import {
   ScheduledTaskSchema,
 } from "../config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation } from "../config.js";
-import { spawnBackgroundTask } from "../task-manager.js";
-import { ackSqsMessages } from "../sqs-ack.js";
+import { spawnBackgroundTask } from "./task-manager.js";
 import log from "../logger.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -235,12 +234,6 @@ export function dispatchTasks(delegation: Delegation): void {
         log.info(` markSurfaced: ${task.mark_surfaced.id}`);
         sdb.markSurfaced(task.mark_surfaced.id, task.mark_surfaced.state);
         sdb.close();
-      }
-      const sqsId = task.context.sqs_message_id as string | undefined;
-      if (result.status === "ok" && sqsId) {
-        ackSqsMessages([sqsId]).catch((e: unknown) => {
-          log.error(`SQS ack failed for script task ${task.id}: ${(e as Error).message}`);
-        });
       }
       const schedId = task.context.scheduled_task_id as string | undefined;
       if (schedId) {
