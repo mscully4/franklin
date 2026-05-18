@@ -16,6 +16,10 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
       db.prepare(`
         INSERT INTO dispatch_log (task_id, type, priority, dispatched_at, completed_at, status, summary)
         VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(task_id) DO UPDATE SET
+          completed_at = excluded.completed_at,
+          status = excluded.status,
+          summary = excluded.summary
       `).run(entry.task_id, entry.type, entry.priority, entry.dispatched_at, entry.completed_at, entry.status, entry.summary);
     },
 

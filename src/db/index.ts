@@ -133,6 +133,21 @@ function applyMigrations(db: InstanceType<typeof Database>): void {
   if (!runningCols.some((c) => c.name === "assigned_ip")) {
     db.exec(`ALTER TABLE running_tasks ADD COLUMN assigned_ip TEXT`);
   }
+
+  // Deduplicate dispatch_log: keep only the latest row per task_id
+  const dupCount = (db.prepare(
+    `SELECT COUNT(*) as cnt FROM dispatch_log WHERE id NOT IN (SELECT MAX(id) FROM dispatch_log GROUP BY task_id)`
+  ).get() as { cnt: number }).cnt;
+  if (dupCount > 0) {
+    db.exec(`DELETE FROM dispatch_log WHERE id NOT IN (SELECT MAX(id) FROM dispatch_log GROUP BY task_id)`);
+    console.log(`[db] deduplicated dispatch_log: removed ${dupCount} duplicate rows`);
+  }
+
+  // Add unique index to prevent future duplicates
+  const indices = db.pragma("index_list(dispatch_log)") as Array<{ name: string }>;
+  if (!indices.some((i) => i.name === "dispatch_log_task_id_unique")) {
+    db.exec(`CREATE UNIQUE INDEX dispatch_log_task_id_unique ON dispatch_log(task_id)`);
+  }
 }
 
 function seedChannelPolicies(db: InstanceType<typeof Database>): void {
