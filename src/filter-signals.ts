@@ -95,7 +95,13 @@ const handlerChannels = new Set(CHANNEL_SIGNAL_HANDLERS.map((h) => h.channel));
 const inboxEvents: InboxEvent[] = [];
 let channelSignalCount = 0;
 
-for (const event of pendingEvents) {
+// Partition reactions out before message processing
+const reactionRaws = pendingEvents
+  .filter((e) => e.type === "reaction")
+  .map((e) => e.raw);
+const messageEvents = pendingEvents.filter((e) => e.type !== "reaction");
+
+for (const event of messageEvents) {
   const handler = CHANNEL_SIGNAL_HANDLERS.find(
     (h) => h.channel === event.channel && h.matches(event, ownerUserId),
   );
@@ -129,10 +135,11 @@ if (pendingEvents.length > 0) {
 
 writeFileSync(join(OUT_DIR, "signals.json"), JSON.stringify(signals, null, 2));
 writeFileSync(join(OUT_DIR, "slack_inbox.json"), JSON.stringify(inboxEvents, null, 2));
+writeFileSync(join(OUT_DIR, "discord_reactions.json"), JSON.stringify(reactionRaws, null, 2));
 
 db.close();
 
 log.info(
   `${signals.length} changed signals (${channelSignalCount} from socket channels), ` +
-  `${inboxEvents.length} slack inbox events → ${OUT_DIR}`
+  `${inboxEvents.length} inbox events, ${reactionRaws.length} reactions → ${OUT_DIR}`
 );
