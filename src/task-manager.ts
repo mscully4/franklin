@@ -351,14 +351,14 @@ function finalizeTask(
 // ── Reaper — runs each cycle to collect completed tasks ─────────────────────
 
 export function reapTasks(): {
-  completed: Array<{ taskId: string; scheduledTaskId?: string; status: "ok" | "error" }>;
+  completed: Array<{ taskId: string; scheduledTaskId?: string; sqsMessageId?: string; status: "ok" | "error" }>;
 } {
   const WORKER_RESULTS_DIR = join(ROOT, "state", "worker_results");
   const reapDb = openDb();
   const tasks = reapDb.getRunningTasks();
   reapDb.close();
 
-  const completed: Array<{ taskId: string; scheduledTaskId?: string; status: "ok" | "error" }> = [];
+  const completed: Array<{ taskId: string; scheduledTaskId?: string; sqsMessageId?: string; status: "ok" | "error" }> = [];
 
   for (const task of tasks) {
     const elapsed = Date.now() - new Date(task.dispatched_at).getTime();
@@ -377,7 +377,7 @@ export function reapTasks(): {
       // Task completed normally
       log.info(` Reaping completed task ${task.task_id} (${result.status})`);
       const ctx = JSON.parse(task.context);
-      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, status: result.status === "ok" ? "ok" : "error" });
+      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, sqsMessageId: ctx.sqs_message_id, status: result.status === "ok" ? "ok" : "error" });
       finalizeTask(task, result);
       continue;
     }
@@ -394,7 +394,7 @@ export function reapTasks(): {
       };
       writeJson(resultFile, deadResult);
       const ctx = JSON.parse(task.context);
-      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, status: "error" });
+      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, sqsMessageId: ctx.sqs_message_id, status: "error" });
       finalizeTask(task, deadResult);
       continue;
     }
@@ -415,7 +415,7 @@ export function reapTasks(): {
       };
       writeJson(resultFile, timeoutResult);
       const ctx = JSON.parse(task.context);
-      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, status: "error" });
+      completed.push({ taskId: task.task_id, scheduledTaskId: ctx.scheduled_task_id, sqsMessageId: ctx.sqs_message_id, status: "error" });
       finalizeTask(task, timeoutResult);
       continue;
     }

@@ -6,20 +6,11 @@
  * filter-signals.ts iterates the registry automatically — no changes needed there.
  */
 
+import type { openDb } from "./db.js";
+
 // ── Shared types ────────────────────────────────────────────────────────────
 
-/** Shape returned by db.getPendingSlackEvents() */
-export interface SlackInboxEvent {
-  event_ts: string;
-  channel: string;
-  channel_type: string;
-  user_id: string | null;
-  type: string;
-  reaction: string | null;
-  text: string | null;
-  raw: Record<string, unknown>;
-  received_at: string;
-}
+type PendingSlackEvent = ReturnType<ReturnType<typeof openDb>["getPendingSlackEvents"]>[number];
 
 /** Structured entry shape the brain expects for channel-sourced signals */
 export interface ChannelEntry {
@@ -39,9 +30,9 @@ export interface ChannelSignalHandler {
   /** Signal source name for the brain */
   signalSource: string;
   /** Return true if this event should become a signal */
-  matches(event: SlackInboxEvent, ownerUserId: string): boolean;
+  matches(event: PendingSlackEvent, ownerUserId: string): boolean;
   /** Map raw inbox event to a ChannelEntry for the brain */
-  toEntry(event: SlackInboxEvent): ChannelEntry;
+  toEntry(event: PendingSlackEvent): ChannelEntry;
 }
 
 // ── Handler registry ────────────────────────────────────────────────────────

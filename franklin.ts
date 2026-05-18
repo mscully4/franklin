@@ -180,22 +180,13 @@ function runFilterSignals(): void {
 // Auth is enforced at intake in server.ts — only authorized IDs ever reach the file.
 // Does NOT go through the brain — avoids LLM dropping messages.
 
-interface SlackInboxEvent {
-  event_ts: string;
-  channel: string;
-  channel_type: string;
-  user_id?: string;
-  type: string;
-  reaction?: string;
-  text?: string;
-  thread_ts?: string;
+type SlackInboxEntry = ReturnType<ReturnType<typeof openDb>["getPendingSlackEvents"]>[number] & {
   thread_context?: Array<{ author: string; text: string; ts: string }> | null;
-  received_at: string;
-}
+};
 
 function generateDmTasks(): DelegationTask[] {
   const inboxFile = join(ROOT, "state", "brain_input", "slack_inbox.json");
-  const inbox = readJson<SlackInboxEvent[]>(inboxFile) ?? [];
+  const inbox = readJson<SlackInboxEntry[]>(inboxFile) ?? [];
   if (!inbox.length) return [];
 
   const settings = readJsonWithSchema(SETTINGS_FILE, SettingsSchema);

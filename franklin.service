@@ -1,0 +1,14 @@
+[Unit]
+Description=Franklin Agent
+After=network.target
+
+[Service]
+Type=simple
+Environment="PATH=/home/mike/.nvm/versions/node/v24.11.1/bin:/home/mike/.local/bin:/usr/local/bin:/usr/bin:/bin"
+WorkingDirectory=/home/mike/Workplace/Franklin
+ExecStart=/home/mike/.nvm/versions/node/v24.11.1/bin/npm run franklin
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

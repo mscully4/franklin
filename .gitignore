@@ -36,7 +36,8 @@ state/meetings/*
 scripts/start-service.sh
 
 # Local Claude Code config
-.claude/
+# .claude/
+!.claude/skills/*
 
 # Local symlinks (users provide their own knowledge/references dirs)
 knowledge

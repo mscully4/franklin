@@ -27,6 +27,7 @@ export type {
 export const SCOUT_INTERVALS_MS: Record<string, number> = {
   gmail: 15 * 60 * 1000,
   calendar: 10 * 60 * 1000,
+  sqs: 30 * 1000,
 };
 
 /** Default task timeouts by type. Brain can override with `timeout` on any task. */
