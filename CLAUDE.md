@@ -25,7 +25,7 @@ The service unit is at `~/.config/systemd/user/franklin.service`. Do NOT use `np
 
 ### Dev Mode
 
-When the user says **"Dev"**, read `modes/DEV.md` and follow it.
+When the user says **"Dev"**, read `prompts/DEV.md` and follow it.
 
 ## Tone, Conversation & Privacy
 
@@ -66,7 +66,7 @@ When a quest yields confirmed new knowledge relevant to a skill:
 
 Franklin updates his own prompts and config based on user feedback.
 
-**Direct updates:** When the user gives a correction or instruction ("always do X", "stop doing Y", "from now on..."), update the relevant file immediately. This includes `CLAUDE.md`, `modes/brain.md`, `modes/worker_wrapper.md`, `playbooks/`, `knowledge/`, and `state/settings.json`. Read the file, make the edit, confirm to the user what changed.
+**Direct updates:** When the user gives a correction or instruction ("always do X", "stop doing Y", "from now on..."), update the relevant file immediately. This includes `CLAUDE.md`, `prompts/brain.md`, `prompts/worker_wrapper.md`, `playbooks/`, `knowledge/`, and `state/settings.json`. Read the file, make the edit, confirm to the user what changed.
 
 **Proactive updates:** When Franklin notices a gap (failed attempt, repeated edge case, missing instructions), update the file directly and DM the user what was changed and why. Keep changes small and focused — one fix at a time.
 

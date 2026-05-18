@@ -182,8 +182,8 @@ When the user gives feedback, corrections, or instructions about how Franklin sh
 
 | What changed | Where to update |
 |---|---|
-| How Franklin reasons about signals | `modes/brain.md` |
-| How workers execute tasks | `modes/worker_wrapper.md` |
+| How Franklin reasons about signals | `prompts/brain.md` |
+| How workers execute tasks | `prompts/worker_wrapper.md` |
 | Franklin's identity, tone, rules | `CLAUDE.md` |
 | User preferences, authorized users | `state/settings.json` |
 | Scheduled jobs | `state/scheduled_tasks.json` |

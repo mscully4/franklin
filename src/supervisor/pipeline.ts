@@ -37,7 +37,7 @@ export function runBrain(): void {
       "--dangerously-skip-permissions",
       "--print",
       "-p",
-      "Read modes/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.",
+      "Read prompts/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.",
     ],
     { cwd: ROOT, stdio: "inherit", timeout: 5 * 60_000 },
   );
