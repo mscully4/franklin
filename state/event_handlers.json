@@ -1,0 +1,21 @@
+[
+  {
+    "id": "deal-dash-post",
+    "event_type": "deal-dash",
+    "sub_type": null,
+    "kind": "script",
+    "command": "npx tsx src/scripts/discord_post_deal.ts",
+    "timeout": 30000,
+    "description": "Post deal embed to Discord",
+    "context": { "channel_id": "1502059393724715038" }
+  },
+  {
+    "id": "deal-reaction-feedback",
+    "event_type": "reaction",
+    "sub_type": "deal-dash",
+    "kind": "script",
+    "command": "npx tsx src/scripts/sns_publish_feedback.ts",
+    "timeout": 15000,
+    "description": "Publish 👍/👎 feedback to SNS"
+  }
+]

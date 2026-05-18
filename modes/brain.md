@@ -20,6 +20,9 @@ Read all of these. Missing files are not errors — treat as empty.
 state/brain_input/signals.json          changed stateful signals (gmail)
 state/brain_input/slack_inbox.json      unprocessed Slack inbox events
 state/brain_input/inflight_signals.json  signals with active tasks (array of signal_ids)
+state/scout_results/sqs.json            inbound SQS messages from external services
+state/event_handlers.json               configurable event handler registry
+state/brain_input/discord_reactions.json Discord reaction events (drained by filter-signals)
 state/settings.json                     user identity, authorized_users
 state/discord_bot.json                  Discord bot health
 state/last_run.json                     timestamps from last cycle
@@ -99,7 +102,77 @@ For signals from registered channel handlers (see `src/channel-signals.ts`): emi
 
 ---
 
-## Step 6 — Multi-Step Tasks (Quests)
+## Step 6 — Route Event Messages
+
+### 6a — Load handlers
+
+Read `state/event_handlers.json` as an array. Missing file = empty array. Each handler has:
+- `id` — unique handler identifier
+- `event_type` — matches `InboundMessage.type` for SQS events, or `"reaction"` for Discord reactions
+- `sub_type` — narrows match (`null` = match all sub_types)
+- `kind` — `"script"` or `"worker"`
+- `command` — required when `kind` is `"script"`
+- `timeout` — optional override in ms
+- `context` — optional extra fields merged into task context
+
+To match: `handler.event_type === event.type` AND (`handler.sub_type === null` OR `handler.sub_type === event.sub_type`). Use the first matching handler.
+
+### 6b — Route SQS entries
+
+Read `state/scout_results/sqs.json`. Each entry in `entries` is an inbound SQS message.
+
+Entry shape:
+```json
+{
+  "id": "sqs:message:<message_id>",
+  "message_id": "<message_id>",
+  "type": "deal-dash",
+  "sub_type": "string or null",
+  "source": "service-name",
+  "trace_id": "string or null",
+  "payload": { }
+}
+```
+
+**Skip** entries where `sqs_message_id` already appears in an active quest context or inflight task.
+
+For each remaining entry:
+- Find a matching handler from `event_handlers.json`
+- **Handler found:** emit a task with:
+  - `kind`: from handler (`"script"` or `"worker"`)
+  - `command`: from handler (required for scripts)
+  - `timeout`: from handler if set
+  - `context`: `{ sqs_message_id: entry.message_id, payload: entry.payload, ...handler.context }`
+  - `type`: handler id (e.g. `"deal-dash-post"`)
+- **No handler found:** apply judgment — generate an appropriate `quest` or `dm_reply` task using the payload content. Always include `sqs_message_id` in context.
+
+**Critical:** Every task from an SQS entry MUST include `sqs_message_id` in context so the supervisor can ack the message after completion.
+
+### 6c — Route Discord reactions
+
+Read `state/brain_input/discord_reactions.json` as an array. Missing file = empty, skip.
+
+Each reaction event shape:
+```json
+{
+  "message_id": "...",
+  "channel_id": "...",
+  "user_id": "...",
+  "emoji": "👍",
+  "reacted_at": "ISO 8601",
+  "sub_type": "deal-dash",
+  "meta": { "upc": "...", "title": "...", "retailer": "..." }
+}
+```
+
+For each reaction:
+- Find a matching handler where `event_type === "reaction"` AND (`sub_type === null` OR `sub_type === reaction.sub_type`)
+- If handler found: emit task with `kind`, `command`, `context = { ...reaction, ...handler.context }`
+- No `sqs_message_id` on reaction tasks — no SQS acking needed
+
+---
+
+## Step 7 — Multi-Step Tasks (Quests)
 
 Some tasks require multiple steps across tool calls, take longer than a single action, or involve iteration (write code → open PR → monitor CI → merge). Emit these as `type: "quest"` — they get persistent state files and a 60-minute timeout.
 
@@ -125,7 +198,7 @@ One quest per user request. Do not split a single user request into multiple que
 
 ---
 
-## Step 7 — Socket Health Check
+## Step 8 — Socket Health Check
 
 Read `state/discord_bot.json`. If `status !== "connected"` OR `updated_at` is more than 5 minutes old:
 
@@ -133,7 +206,7 @@ Check `state/last_run.json` for `socket_alert_sent`. If it equals today's date (
 
 ---
 
-## Step 8 — Write delegation.json
+## Step 9 — Write delegation.json
 
 Write `state/delegation.json`. Always write the file even if `tasks` is empty.
 
