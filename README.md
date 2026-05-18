@@ -91,7 +91,7 @@ Recurring jobs defined in `state/scheduled_tasks.json`. The supervisor fires the
   "type": "scheduled",
   "priority": "low",
   "kind": "script",
-  "command": "npx tsx scripts/cleanup-sandboxes.ts",
+  "command": "npx tsx src/actions/cleanup-sandboxes.ts",
   "timeout": 30000,
   "context": { "objective": "Clean up stale quest sandbox directories" }
 }

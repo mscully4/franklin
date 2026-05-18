@@ -2,7 +2,6 @@ import Database from "better-sqlite3";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { makeSignalsMethods } from "./signals.js";
-import { makeInboxMethods } from "./inbox.js";
 import { makeTaskMethods } from "./tasks.js";
 import { makeChannelAuthMethods } from "./channel-auth.js";
 import { makeDeployMethods } from "./deploys.js";
@@ -24,21 +23,6 @@ const SCHEMA = `
   );
   CREATE INDEX IF NOT EXISTS surfaced_source    ON surfaced(source);
   CREATE INDEX IF NOT EXISTS surfaced_last_seen ON surfaced(last_seen_at);
-
-  CREATE TABLE IF NOT EXISTS slack_inbox (
-    event_ts     TEXT PRIMARY KEY,
-    channel      TEXT NOT NULL,
-    channel_type TEXT NOT NULL,
-    user_id      TEXT,
-    type         TEXT NOT NULL,
-    reaction     TEXT,
-    text         TEXT,
-    thread_ts    TEXT,
-    raw          TEXT NOT NULL,
-    received_at  TEXT NOT NULL,
-    processed    INTEGER NOT NULL DEFAULT 0
-  );
-  CREATE INDEX IF NOT EXISTS slack_inbox_pending ON slack_inbox(processed, event_ts);
 
   CREATE TABLE IF NOT EXISTS dispatch_log (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,11 +121,6 @@ const SCHEMA = `
 `;
 
 function applyMigrations(db: InstanceType<typeof Database>): void {
-  const inboxCols = db.pragma("table_info(slack_inbox)") as Array<{ name: string }>;
-  if (!inboxCols.some((c) => c.name === "thread_ts")) {
-    db.exec(`ALTER TABLE slack_inbox ADD COLUMN thread_ts TEXT`);
-  }
-
   const deployCols = db.pragma("table_info(deploys)") as Array<{ name: string }>;
   if (!deployCols.some((c) => c.name === "status")) {
     db.exec(`ALTER TABLE deploys ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`);
@@ -178,7 +157,6 @@ export function openDb(path = DB_PATH) {
 
   return {
     ...makeSignalsMethods(db),
-    ...makeInboxMethods(db),
     ...makeTaskMethods(db),
     ...makeChannelAuthMethods(db),
     ...makeDeployMethods(db),

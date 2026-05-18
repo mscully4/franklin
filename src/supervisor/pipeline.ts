@@ -6,7 +6,7 @@ import { z } from "zod";
 import { openDb } from "../db.js";
 import {
   readJson, readJsonWithSchema, writeJson,
-  SettingsSchema, ScheduledTaskSchema,
+  ScheduledTaskSchema,
 } from "../config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation } from "../config.js";
 import { spawnBackgroundTask } from "../task-manager.js";
@@ -18,10 +18,6 @@ const WORKER_RESULTS_DIR = join(ROOT, "state", "worker_results");
 const SETTINGS_FILE = join(ROOT, "state", "settings.json");
 const SCHEDULED_TASKS_FILE = join(ROOT, "state", "scheduled_tasks.json");
 const SCRIPT_TIMEOUT_MS = 60_000;
-
-type SlackInboxEntry = ReturnType<ReturnType<typeof openDb>["getPendingSlackEvents"]>[number] & {
-  thread_context?: Array<{ author: string; text: string; ts: string }> | null;
-};
 
 export function appendDispatchLog(entry: DispatchLogEntry): void {
   const logDb = openDb();
@@ -45,60 +41,6 @@ export function runBrain(): void {
   if (result.status !== 0) {
     log.error(` Brain exited with status ${result.status ?? "timeout"}`);
   }
-}
-
-export function generateDmTasks(): DelegationTask[] {
-  const inboxFile = join(ROOT, "state", "brain_input", "slack_inbox.json");
-  const inbox = readJson<SlackInboxEntry[]>(inboxFile) ?? [];
-  if (!inbox.length) return [];
-
-  const settings = readJsonWithSchema(SETTINGS_FILE, SettingsSchema);
-  const authorizedIds = new Set(
-    (settings?.authorized_users ?? []).map((u) => u.discord_user_id),
-  );
-  const mode = settings?.mode ?? "drafts_only";
-
-  const tasks: DelegationTask[] = [];
-
-  for (const event of inbox) {
-    if (!event.user_id) continue;
-    if (!authorizedIds.has(event.user_id)) continue;
-
-    tasks.push({
-      id: `dm-${event.event_ts}`,
-      type: "dm_reply",
-      priority: "high",
-      context: {
-        event_ts: event.event_ts,
-        channel: event.channel,
-        channel_type: event.channel_type,
-        user_id: event.user_id,
-        text: event.text ?? null,
-        type: event.type,
-        reaction: null,
-        thread_ts: event.thread_ts ?? null,
-        thread_context: event.thread_context ?? null,
-        source_tag: "dm",
-        quest_id: null,
-        mode,
-        max_task_type: "quest",
-      },
-      mark_surfaced: null,
-    });
-  }
-
-  const annotatedInbox = inbox.map((event) => {
-    if (!event.user_id || !authorizedIds.has(event.user_id)) {
-      return { ...event, max_task_type: null };
-    }
-    return { ...event, max_task_type: "quest" };
-  });
-  writeJson(inboxFile, annotatedInbox);
-
-  if (tasks.length) {
-    log.info(` Generated ${tasks.length} dm_reply task(s) from inbox`);
-  }
-  return tasks;
 }
 
 // ── Scheduled tasks ──────────────────────────────────────────────────────────

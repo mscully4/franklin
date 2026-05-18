@@ -77,16 +77,3 @@ export function runScout(name: string): void {
     log.error(` ${name} scout failed: ${(e as Error).message?.slice(0, 200)}`);
   }
 }
-
-export function runFilterSignals(): void {
-  log.info("Running filter-signals...");
-  try {
-    execSync("npx tsx src/filter-signals.ts", {
-      cwd: ROOT,
-      stdio: "inherit",
-      timeout: 30_000,
-    });
-  } catch (e: unknown) {
-    log.error(` filter-signals failed: ${(e as Error).message?.slice(0, 200)}`);
-  }
-}

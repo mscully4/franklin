@@ -18,11 +18,10 @@ Read all of these. Missing files are not errors — treat as empty.
 
 ```
 state/brain_input/signals.json          changed stateful signals (gmail)
-state/brain_input/slack_inbox.json      unprocessed Slack inbox events
 state/brain_input/inflight_signals.json  signals with active tasks (array of signal_ids)
 state/scout_results/sqs.json            inbound SQS messages from external services
 state/event_handlers.json               configurable event handler registry
-state/brain_input/discord_reactions.json Discord reaction events (drained by filter-signals)
+state/brain_input/discord_reactions.json Discord reaction events (drained by SQS scout)
 state/settings.json                     user identity, authorized_users
 state/discord_bot.json                  Discord bot health
 state/last_run.json                     timestamps from last cycle
@@ -39,38 +38,7 @@ An array of signals where the state has changed since the last time the user was
 
 `is_new: true` means never surfaced before. `previous_state: {}` means same thing.
 
-### slack_inbox.json
-
-An array of raw Slack events, already drained and deduplicated. Every event here is new.
-
-```json
-{
-  "event_ts": "1775526310.180159",
-  "channel": "D09TPK162SD",
-  "channel_type": "im",
-  "user_id": "U09TE8XTM9A",
-  "type": "message",
-  "reaction": null,
-  "text": "can you review wallets-api PR #3077",
-  "received_at": "ISO 8601"
-}
-```
-
----
-
-## Step 3 — Slack Inbox
-
-**Do not generate `dm_reply` tasks.** The supervisor generates them deterministically before calling you. Your job is signals only.
-
-Each event in `slack_inbox.json` now includes a `max_task_type` field:
-
-- `null` — the user is not authorized in this channel. Skip the event entirely.
-- `"dm_reply"` — the user's channel policy only permits conversational replies. Do not generate a `quest` from this event.
-- `"quest"` — the user can trigger quests. Apply normal judgment about whether the message warrants a quest.
-
----
-
-## Step 4 — Process Gmail Signals
+## Step 3 — Process Gmail Signals
 
 For each signal with `source: "gmail"` (always `is_new: true` — emails surface once):
 
@@ -94,17 +62,9 @@ For emails that pass the filter, emit an `email_notify` task with context: `subj
 
 ---
 
-## Step 5 — Process Slack Channel Signals
+## Step 4 — Route Event Messages
 
-For signals from registered channel handlers (see `src/channel-signals.ts`): emit a `dm_reply` task with `priority: "high"` and include the signal text as context.
-
-`mark_surfaced`: always set — signals from channels surface once.
-
----
-
-## Step 6 — Route Event Messages
-
-### 6a — Load handlers
+### 4a — Load handlers
 
 Read `state/event_handlers.json` as an array. Missing file = empty array. Each handler has:
 - `id` — unique handler identifier
@@ -117,7 +77,7 @@ Read `state/event_handlers.json` as an array. Missing file = empty array. Each h
 
 To match: `handler.event_type === event.type` AND (`handler.sub_type === null` OR `handler.sub_type === event.sub_type`). Use the first matching handler.
 
-### 6b — Route SQS entries
+### 4b — Route SQS entries
 
 Read `state/scout_results/sqs.json`. Each entry in `entries` is an inbound SQS message.
 
@@ -148,7 +108,7 @@ For each remaining entry:
 
 **Critical:** Every task from an SQS entry MUST include `sqs_message_id` in context so the supervisor can ack the message after completion.
 
-### 6c — Route Discord reactions
+### 4c — Route Discord reactions
 
 Read `state/brain_input/discord_reactions.json` as an array. Missing file = empty, skip.
 
@@ -172,7 +132,7 @@ For each reaction:
 
 ---
 
-## Step 7 — Multi-Step Tasks (Quests)
+## Step 5 — Multi-Step Tasks (Quests)
 
 Some tasks require multiple steps across tool calls, take longer than a single action, or involve iteration (write code → open PR → monitor CI → merge). Emit these as `type: "quest"` — they get persistent state files and a 60-minute timeout.
 
@@ -198,7 +158,7 @@ One quest per user request. Do not split a single user request into multiple que
 
 ---
 
-## Step 8 — Socket Health Check
+## Step 6 — Socket Health Check
 
 Read `state/discord_bot.json`. If `status !== "connected"` OR `updated_at` is more than 5 minutes old:
 
@@ -206,7 +166,7 @@ Check `state/last_run.json` for `socket_alert_sent`. If it equals today's date (
 
 ---
 
-## Step 9 — Write delegation.json
+## Step 7 — Write delegation.json
 
 Write `state/delegation.json`. Always write the file even if `tasks` is empty.
 

@@ -7,10 +7,10 @@ import { initTaskManager, reapTasks, writeInflightSignals } from "../task-manage
 import { ackSqsMessages } from "../sqs-ack.js";
 import { openDb } from "../db.js";
 import { checkLock, writeLock, deleteLock, readLock } from "./lock.js";
-import { readLastRun, writeLastRun, isScoutDue, runStartupChecks, runScout, runFilterSignals } from "./scouts.js";
+import { readLastRun, writeLastRun, isScoutDue, runStartupChecks, runScout } from "./scouts.js";
 import {
   appendDispatchLog, runBrain,
-  generateDmTasks, generateScheduledTasks,
+  generateScheduledTasks,
   dispatchTasks, updateScheduledTaskResult,
 } from "./pipeline.js";
 import log from "../logger.js";
@@ -105,8 +105,6 @@ function runCycle(startedAt: string): void {
     }
     if (!anyScoutRan) log.debug("No scouts due this cycle");
 
-    runFilterSignals();
-
     const reaped = reapTasks();
     for (const r of reaped.completed) {
       if (r.scheduledTaskId) updateScheduledTaskResult(r.scheduledTaskId, r.status);
@@ -120,12 +118,11 @@ function runCycle(startedAt: string): void {
       });
     }
 
-    const dmTasks = generateDmTasks();
     const scheduledTasks = generateScheduledTasks();
     writeInflightSignals();
 
     const signals = readJson<unknown[]>(join(ROOT, "state", "brain_input", "signals.json")) ?? [];
-    const hasBrainWork = signals.length > 0 || dmTasks.length > 0 || scheduledTasks.length > 0;
+    const hasBrainWork = signals.length > 0 || scheduledTasks.length > 0;
     if (hasBrainWork) {
       runBrain();
     } else {
@@ -134,7 +131,7 @@ function runCycle(startedAt: string): void {
 
     const brainDelegation = readJsonWithSchema(DELEGATION_FILE, DelegationSchema);
     const brainTasks = brainDelegation?.tasks ?? [];
-    const allTasks = [...dmTasks, ...scheduledTasks, ...brainTasks];
+    const allTasks = [...scheduledTasks, ...brainTasks];
 
     if (allTasks.length) {
       const idDb = openDb();
@@ -167,9 +164,8 @@ function runCycle(startedAt: string): void {
     if (lastRun.last_prune_date !== todayLocal) {
       const pruneDb = openDb();
       const dispatches = pruneDb.pruneDispatchLog(30);
-      const inbox = pruneDb.pruneSlackInbox(2);
       pruneDb.close();
-      if (dispatches || inbox) log.info(` Pruned ${dispatches} dispatch entries, ${inbox} inbox events`);
+      if (dispatches) log.info(` Pruned ${dispatches} dispatch entries`);
       lastRun.last_prune_date = todayLocal;
     }
 
