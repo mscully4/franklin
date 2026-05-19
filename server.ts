@@ -226,6 +226,20 @@ app.get("/api/metrics", (_req, res) => {
 app.get("/", (_req, res) => res.sendFile(join(__dirname, "index.html")));
 app.get("/avatar.png", (_req, res) => res.sendFile(join(__dirname, "Franklin-Avatar.png")));
 
+app.get("/api/deepseek-balance", async (_req, res) => {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  if (!apiKey) { res.status(503).json({ error: "DEEPSEEK_API_KEY not set" }); return; }
+  try {
+    const r = await fetch("https://api.deepseek.com/user/balance", {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const data = await r.json() as { is_available?: boolean; balance_infos?: Array<{ currency: string; total_balance: string; topped_up_balance: string }> };
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: (err as Error).message });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   log.info(`Franklin dashboard → http://localhost:${PORT}`);
 });

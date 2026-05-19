@@ -277,6 +277,10 @@
   <header>
     <h1><img src="/avatar.png" alt="Franklin">Franklin</h1>
     <div id="header-metrics"></div>
+    <div class="hm" title="DeepSeek account balance" style="font-size:12px">
+      <span class="hm-emoji">💰</span>
+      <span class="hm-val" id="deepseek-balance" style="color:var(--yellow)">…</span>
+    </div>
     <div id="refresh">loading...</div>
   </header>
 
@@ -774,10 +778,27 @@
       }).join('');
     }
 
+    async function fetchDeepSeekBalance() {
+      try {
+        const data = await fetch('/api/deepseek-balance').then(r => r.json());
+        const info = data.balance_infos?.[0];
+        const el = document.getElementById('deepseek-balance');
+        if (!el) return;
+        if (info) {
+          el.textContent = `$${parseFloat(info.total_balance).toFixed(2)}`;
+          el.title = `DeepSeek balance: $${info.total_balance} USD`;
+        } else {
+          el.textContent = 'err';
+        }
+      } catch {}
+    }
+
     refresh();
     fetchMetrics();
+    fetchDeepSeekBalance();
     setInterval(refresh, 10000);
     setInterval(fetchMetrics, 60000);
+    setInterval(fetchDeepSeekBalance, 300000);
   </script>
 </body>
 </html>
