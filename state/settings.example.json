@@ -3,11 +3,11 @@
   "mode": "drafts_only",
   "user_profile": {
     "name": "Your Name",
-    "slack_user_id": "UXXXXXXXXXX",
+    "discord_user_id": "XXXXXXXXXXXXXXXXXX",
     "tone": "professional but not stiff, direct, friendly"
   },
   "authorized_users": [
-    { "name": "your-name", "slack_user_id": "UXXXXXXXXXX" }
+    { "name": "your-name", "discord_user_id": "XXXXXXXXXXXXXXXXXX" }
   ],
-  "integrations": ["slack", "jira", "github", "gws"]
+  "integrations": ["discord", "gws"]
 }

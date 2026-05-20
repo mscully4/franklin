@@ -322,12 +322,6 @@
       refresh();
     }
 
-    function slackAppUrl(permalink) {
-      const m = permalink && permalink.match(/archives\/([A-Z0-9]+)\/p(\d{10})(\d{6})/);
-      if (!m) return permalink;
-      return `slack://channel?team=T0252ABLY&id=${m[1]}&message=${m[2]}.${m[3]}`;
-    }
-
     function timeAgoClient(iso) {
       if (!iso) return 'never';
       const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -360,7 +354,7 @@
       body += `<div class="modal-section">`;
       if (dep.requester) body += `<div class="modal-kv"><span class="modal-kv-label">Requester</span><span class="modal-kv-value">${esc(dep.requester)}</span></div>`;
       body += `<div class="modal-kv"><span class="modal-kv-label">Time</span><span class="modal-kv-value">${esc(dep.createdAgo)}</span></div>`;
-      if (dep.message_url) body += `<div class="modal-kv"><span class="modal-kv-label">Slack</span><span class="modal-kv-value"><a href="${esc(slackAppUrl(dep.message_url))}">View message</a></span></div>`;
+      if (dep.message_url) body += `<div class="modal-kv"><span class="modal-kv-label">Message</span><span class="modal-kv-value"><a href="${esc(dep.message_url)}">View message</a></span></div>`;
       body += `</div>`;
 
       // Description
@@ -466,7 +460,6 @@
           <div class="section-title">Socket</div>
           <div class="status-line">${socketDot}</div>
           <div class="kv"><span class="kv-label">updated </span><span class="kv-value">${d.socketAgo}</span></div>
-          <div class="kv"><span class="kv-label">inbox </span><span class="kv-value">${d.slackInboxPending} pending</span></div>
         </div>
         <div class="section">
           <div class="section-title">Scouts</div>

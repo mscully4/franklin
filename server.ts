@@ -146,9 +146,6 @@ app.get("/api/state", (_req, res) => {
   const scheduledTasks = (readJson<Array<{ id: string; every: string; kind?: string; display_description?: string; context: { objective?: string; skill?: string }; last_run?: string }>>(join(STATE, "scheduled_tasks.json")) ?? [])
     .map((t) => ({ id: t.id, every: t.every, kind: t.kind ?? "worker", description: t.display_description ?? t.context?.skill ?? t.id, lastRun: t.last_run ?? null, lastRunAgo: timeAgo(t.last_run ?? null) }));
 
-  // Slack inbox pipeline was removed — keep field for dashboard compat
-  const pending = 0;
-
   res.json({
     running,
     heartbeatAgo: timeAgo(heartbeatTs),
@@ -165,7 +162,6 @@ app.get("/api/state", (_req, res) => {
     scheduledTasks,
     channelPolicies: db.listChannelPolicies(),
     channelUserRules: db.listUserRules(),
-    slackInboxPending: pending,
     serverTime: new Date().toISOString(),
   });
 });
@@ -329,7 +325,7 @@ async function fetchDiscordToken(): Promise<string> {
       threadContext = [{ author: msg.author.username, text: msg.content, ts: msg.id }];
     }
 
-    const inboxFile = join(BRAIN_INPUT, "slack_inbox.json");
+    const inboxFile = join(BRAIN_INPUT, "discord_inbox.json");
     mkdirSync(BRAIN_INPUT, { recursive: true });
     const inbox = readJson<Array<Record<string, unknown>>>(inboxFile) ?? [];
     if (!inbox.some((e) => e.event_ts === msg.id)) {

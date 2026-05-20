@@ -44,9 +44,9 @@ export function runBrain(): void {
 
 // ── Discord DM inbox ────────────────────────────────────────────────────────
 
-const SLACK_INBOX_FILE = join(ROOT, "state", "brain_input", "slack_inbox.json");
+const DISCORD_INBOX_FILE = join(ROOT, "state", "brain_input", "discord_inbox.json");
 
-type SlackInboxEntry = {
+type DiscordInboxEntry = {
   event_ts: string;
   channel: string;
   channel_type: string;
@@ -59,7 +59,7 @@ type SlackInboxEntry = {
 };
 
 export function generateDmTasks(): DelegationTask[] {
-  const inbox = readJson<SlackInboxEntry[]>(SLACK_INBOX_FILE) ?? [];
+  const inbox = readJson<DiscordInboxEntry[]>(DISCORD_INBOX_FILE) ?? [];
   if (!inbox.length) return [];
 
   const settings = readJsonWithSchema(SETTINGS_FILE, SettingsSchema);
@@ -94,7 +94,7 @@ export function generateDmTasks(): DelegationTask[] {
   }
 
   // Clear the inbox so events don't re-fire
-  writeJson(SLACK_INBOX_FILE, []);
+  writeJson(DISCORD_INBOX_FILE, []);
 
   if (tasks.length) {
     log.info(` Generated ${tasks.length} dm_reply task(s) from Discord inbox`);
