@@ -58,18 +58,18 @@ Skip this for tasks with no `thread_ts` (scheduled tasks, signal-based tasks).
 
 ## Step 1b — Query for context
 
-Before acting, check if the vector store has relevant prior knowledge. This takes a few seconds and can save you from repeating mistakes or missing context.
+Before acting, check if the brain has relevant prior knowledge. This takes a few seconds and can save you from repeating mistakes or missing context.
 
 **How to query well:** Don't paste the full objective as the query — embeddings match better on focused terms. Extract 2-3 key entities from the task (service names, people, error messages, concepts) and query on those.
 
-```bash
-echo '{"op":"query","collection":"*","text":"<focused query>","k":5}' \
-  | python3 ~/DevEnv/skills/vector-memory/memory.py
+Use the `gbrain` MCP tool `query` directly:
+```
+mcp:gbrain:query(question="<focused query>", n=5)
 ```
 
 **Multiple queries are fine.** If the task spans multiple topics, run 1-2 additional targeted queries. For example, a task about "credits-manager DLQ retry failing after deploy" benefits from separate queries for `credits-manager DLQ retry` and `deploy rollback gotchas` — a single combined query would blur both.
 
-**If memory.py fails or hangs**, move on. Don't let a vector store issue block the actual task.
+**If the MCP call fails**, move on. Don't let a brain issue block the actual task.
 
 **Using what you find:** Skim the results. If anything relevant comes back (distance < 0.3):
 - If a memory contradicts your planned approach, state the conflict before proceeding.
@@ -171,7 +171,7 @@ To use a skill: read `~/DevEnv/skills/<name>/SKILL.md` and follow its instructio
 | Reply to an email | `gws-gmail-reply` skill |
 | Forward an email | `gws-gmail-forward` skill |
 | Calendar operations | `gws-calendar` skill |
-| Store/recall knowledge | `vector-memory` skill (or use the CLI directly — see Steps 1b and 3) |
+| Store/recall knowledge | `gbrain` MCP tools: `query` to search, `put_page` to write (see Steps 1b and 3) |
 | Monarch Money (accounts, budgets, transactions) | Use `mmoney` skill |
 
 If the task doesn't fit any pattern, figure it out. Combine tools and skills. Read more skill files if the names look relevant. You're autonomous — act like it.
@@ -362,26 +362,20 @@ Slugs are lowercase, hyphen-separated, descriptive enough to be unique but short
 ### Before writing, query first
 
 Check if a relevant entry already exists to avoid duplicates:
-```bash
-echo '{"op":"query","collection":"<collection>","text":"<brief description>","k":3}' \
-  | python3 ~/DevEnv/skills/vector-memory/memory.py
 ```
-If a close match exists (distance < 0.2), update that entry's ID rather than creating a new one.
+mcp:gbrain:query(question="<brief description>", n=3)
+```
+If a close match exists, update that page's slug rather than creating a new one.
 
 ### Write format
 
-```bash
-echo '{
-  "op": "upsert",
-  "collection": "<franklin|meetings|documents>",
-  "id": "<category>:<topic-slug>",
-  "content": "<the content — see guidelines below>",
-  "metadata": {
-    "type": "<category>",
-    "source": "<task_id, quest_id, or document URL>",
-    "date": "<today ISO>"
-  }
-}' | python3 ~/DevEnv/skills/vector-memory/memory.py
+Use the `gbrain` MCP tool `put_page`. The slug maps to the old ID format (`<category>:<topic-slug>`), and the body is markdown:
+
+```
+mcp:gbrain:put_page(
+  slug="<category>:<topic-slug>",
+  body="---\ntags: [<collection>, <category>]\nsource: <task_id or URL>\ndate: <today ISO>\n---\n\n<content>"
+)
 ```
 
 **Content guidelines by collection:**
