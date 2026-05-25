@@ -105,22 +105,6 @@ You can also DM Franklin to add/remove scheduled tasks.
 
 ---
 
-## Docker Port Isolation
-
-When workers run integration tests across multiple repos in parallel, Docker host ports can conflict (e.g. two repos both binding postgres on `5432`). Franklin assigns each worker a unique loopback IP (`127.0.0.2`–`127.0.0.254`) and generates a `docker-compose.override.yml` that rebinds all published ports to that IP, keeping workers fully isolated.
-
-**One-time macOS setup** (loopback aliases survive reboots):
-
-```bash
-sudo bash scripts/setup-loopback.sh
-```
-
-On Linux, all `127.x.x.x` addresses are already routable — no setup needed.
-
-**Per-repo config** lives in `knowledge/repos/<repo-name>/docker.md`. Each file declares the env vars that need the IP substituted (e.g. `APP_CONFIG_OPTION_PG_URL={ip}:5432`) and any repo-specific notes. It can also set `skip_docker: true` to opt that repo out.
-
-**Feature flag** — `feature_flags.skip_docker` in `state/settings.json` disables Docker startup globally (workers skip containers and push to CI instead).
-
 ---
 
 ## Dashboard
@@ -172,7 +156,6 @@ state/
   brain_input/                 # Filtered signals for the brain
   worker_results/              # Worker output
 secrets/                       # Tokens (gitignored)
-knowledge/                     # Domain knowledge (symlink, gitignored)
 references/                    # Tool guides (symlink)
 ```
 
@@ -189,7 +172,6 @@ npm install
 cp state/settings.example.json state/settings.json
 # Edit settings.json with your info
 # Add Slack tokens to secrets/
-sudo bash scripts/setup-loopback.sh  # macOS only, one-time
 npx tsx franklin.ts
 ```
 

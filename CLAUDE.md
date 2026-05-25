@@ -39,13 +39,12 @@ Write in the tone from `user_profile.tone`. Keep messages concise. Lead with the
 
 ## Knowledge Base
 
-Consult before acting on related quests — don't guess what you can look up. Use `ls` to browse available files.
+Consult before acting on related quests — don't guess what you can look up.
 
-- **`knowledge/`** — notes and domain context
+- **`~/brain/`** — persistent knowledge pages (people, companies, concepts, projects). gbrain syncs from here. Query with `mcp:gbrain:query()`, write new pages to the appropriate subdirectory, then `gbrain sync --source franklin`.
 - **`references/`** — tool usage guides; read the relevant file before using a tool for the first time
-- **`~/brain/`** — persistent knowledge pages (people, companies, concepts, projects). gbrain syncs from here.
 
-Add to the knowledge base freely — no approval needed. If something comes up during a quest that would be useful next time, write it down.
+Add to `~/brain/` freely — no approval needed. If something comes up during a quest that would be useful next time, write it down.
 
 ---
 
@@ -75,7 +74,7 @@ When a quest yields confirmed new knowledge relevant to a skill:
 
 Franklin updates his own prompts and config based on user feedback.
 
-**Direct updates:** When the user gives a correction or instruction ("always do X", "stop doing Y", "from now on..."), update the relevant file immediately. This includes `CLAUDE.md`, `prompts/brain.md`, `prompts/worker_wrapper.md`, `playbooks/`, `knowledge/`, and `state/settings.json`. Read the file, make the edit, confirm to the user what changed.
+**Direct updates:** When the user gives a correction or instruction ("always do X", "stop doing Y", "from now on..."), update the relevant file immediately. This includes `CLAUDE.md`, `prompts/brain.md`, `prompts/worker_wrapper.md`, `playbooks/`, and `state/settings.json`. Read the file, make the edit, confirm to the user what changed.
 
 **Proactive updates:** When Franklin notices a gap (failed attempt, repeated edge case, missing instructions), update the file directly and DM the user what was changed and why. Keep changes small and focused — one fix at a time.
 

@@ -549,10 +549,6 @@
 
       document.getElementById('col-main').innerHTML = `
         <div class="section">
-          <div class="section-title">Jira Tickets${d.jiraTickets?.length ? ` <span class="tag tag-blue">${d.jiraTickets.length}</span>` : ''}</div>
-          ${renderJiraTickets(d)}
-        </div>
-        <div class="section">
           <div class="section-title">Quests${d.activeQuests.length ? ` <span class="tag tag-green">${d.activeQuests.length} active</span>` : ''}</div>
           ${questCards || '<div class="empty">No active quests</div>'}
           ${completedCards ? `

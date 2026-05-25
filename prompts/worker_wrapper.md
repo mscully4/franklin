@@ -78,7 +78,7 @@ mcp:gbrain:query(question="<focused query>", n=5)
 
 If nothing useful comes back, move on — don't force it.
 
-**Also check `knowledge/` files.** For domain-specific questions (database schemas, team structure, service behavior), the flat files in `knowledge/` may be more authoritative than vector results. Use `ls knowledge/` and read any relevant files.
+**Also check `~/brain/` files directly.** For domain-specific questions (database schemas, team structure, service behavior), browsing `~/brain/` directly may surface pages the vector query missed. Use `ls ~/brain/<subdirectory>/` and read any relevant files.
 
 **Database queries:** If your task requires understanding actual data (debugging an issue, verifying state, understanding a schema in practice), use the `pi-db-query` skill. It's read-only — query freely when it would help, skip it when it wouldn't.
 
@@ -169,6 +169,7 @@ To use a skill: read `.claude/skills/<name>/SKILL.md` and follow its instruction
 | Task | Approach |
 |------|----------|
 | Send a Discord message | Use `discord_send.ts` script (see Tone & messaging section) |
+| Browse Discord servers | Use `discord-browse.ts` — `guilds` to list servers, `channels --guild_id <id>` to list channels, `messages --channel_id <id> [--limit N]` to read messages |
 | Send an email | `gws-gmail-send` skill |
 | Reply to an email | `gws-gmail-reply` skill |
 | Forward an email | `gws-gmail-forward` skill |
@@ -189,7 +190,7 @@ When the user gives feedback, corrections, or instructions about how Franklin sh
 | Franklin's identity, tone, rules | `CLAUDE.md` |
 | User preferences, authorized users | `state/settings.json` |
 | Scheduled jobs | `state/scheduled_tasks.json` |
-| Domain knowledge | `knowledge/` directory |
+| Domain knowledge | `~/brain/` directory |
 | Scout behavior | `src/scouts/*.ts` (careful — these are code) |
 
 Read the file first, make the edit, confirm to the user what you changed. For code files (`.ts`), be conservative — describe the change and ask before editing unless the user explicitly told you to change it.
@@ -219,43 +220,6 @@ Before starting work, consider what resources you'll need:
 Before exiting, clean up anything you no longer need:
 - Remove temp files and scratch directories
 - Kill any background processes you started
-
-### Docker port isolation
-
-If your quest requires running `docker compose up` (e.g. to spin up postgres or other services for integration tests), check the `skip_docker` flag before proceeding:
-
-1. Read `state/settings.json` — if `feature_flags.skip_docker` is `true`, skip Docker and integration tests for **all** repos; push the PR and let CI run them.
-2. If the global flag is `false` (or absent), check `knowledge/repos/<repo-name>/docker.md` for a `## Flags` section — a `skip_docker: true` there overrides for that repo only.
-3. If neither is set, you **must** use port isolation so parallel workers don't conflict.
-
-**Setup (before `docker compose up`):**
-
-```bash
-# 1. Claim a loopback IP and write the compose override
-DOCKER_CLAIM=$(npx tsx src/actions/docker-claim.ts <task_id> <repo_path>)
-DOCKER_IP=$(echo "$DOCKER_CLAIM" | jq -r '.ip')
-
-# 2. Read per-repo env vars and export them
-# Check knowledge/repos/<repo-name>/docker.md for the "## Env Vars" section.
-# The file uses {ip} as a placeholder. Substitute and export each var, e.g.:
-export APP_CONFIG_OPTION_PG_URL="${DOCKER_IP}:5432"
-
-# 3. Start containers
-docker compose up -d
-```
-
-The claim script writes a `docker-compose.override.yml` in the repo that rebinds all published host ports to your assigned IP (e.g. `127.0.0.2:5432:5432`). Docker Compose automatically merges this override — no flags needed.
-
-**Teardown (on exit, success or failure):**
-
-```bash
-docker compose down
-npx tsx src/actions/docker-release.ts <task_id> <repo_path>
-```
-
-The release script nulls the IP in the DB and removes the override file.
-
-**If `docker_claim` fails** (pool exhausted or no running_tasks row), log the error and either queue the Docker work or report failure — do not proceed without isolation.
 
 **Keep** resources that a follow-up worker will need — sandbox dirs, cloned repos, partially completed work. This applies when:
 - The task is a quest with ongoing work
@@ -305,7 +269,7 @@ The next worker will see the user's reply in its message context plus the conver
 
 ## Step 3 — Store learnings to ~/brain/
 
-If the task produced something worth remembering for next time, write it as a markdown page to the `~/brain/` directory. Only store discrete, reusable knowledge — not routine task output.
+If the task produced something worth remembering for next time, write it as a markdown page to the `~/brain/` directory. **Always write to files — never use `gbrain put`.** The filesystem is the source of truth. Only store discrete, reusable knowledge — not routine task output.
 
 ### Where to file
 
@@ -334,7 +298,7 @@ Read `.claude/skills/repo-architecture/SKILL.md` for the full filing protocol, o
 **Don't store:**
 - Routine acks, status checks, simple replies
 - Raw task context (it's already in the dispatch log)
-- Anything already in the `knowledge/` directory
+- Duplicate information already covered by an existing `~/brain/` page (update the existing page instead)
 
 ### Write format
 
