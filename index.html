@@ -184,6 +184,41 @@
     .side-muted { color: var(--muted); font-size: 11px; margin-top: 1px; }
     .hidden { display: none; }
 
+    .tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tab {
+      padding: 7px 12px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+    .tab-count {
+      padding: 0 5px;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 600;
+      background: rgba(139,148,158,.12);
+      color: var(--muted);
+    }
+    .tab.active .tab-count { background: rgba(57,210,192,.15); color: var(--cyan); }
+
     .empty { color: var(--muted); font-style: italic; font-size: 12px; }
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -568,11 +603,14 @@
         const kindTag = t.kind === 'script'
           ? '<span title="script">⚡</span>'
           : '<span title="worker">🧠</span>';
+        const trippedTag = (t.failCount ?? 0) >= 3
+          ? ' <span class="tag tag-red" title="Circuit breaker tripped after 3 consecutive failures. Reset fail_count to 0 to re-enable.">tripped</span>'
+          : '';
         const detailClass = expandedIds.has(t.id) ? 'sched-detail' : 'sched-detail hidden';
         return `
           <div class="side-row" data-task-id="${esc(t.id)}" style="cursor:pointer" onclick="this.querySelector('.sched-detail').classList.toggle('hidden')">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="color:var(--cyan);font-weight:600">${esc(t.id)}</span>
+              <span style="color:var(--cyan);font-weight:600">${esc(t.id)}${trippedTag}</span>
               <span style="display:flex;gap:4px">${kindTag}<span class="tag tag-purple">${esc(t.every)}</span></span>
             </div>
             <div class="${detailClass}">

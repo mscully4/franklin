@@ -176,6 +176,7 @@ To use a skill: read `.claude/skills/<name>/SKILL.md` and follow its instruction
 | Calendar operations | `gws-calendar` skill |
 | Store/recall knowledge | `mcp:gbrain:query()` to search, write to `~/brain/` directory + `gbrain sync --source franklin` to store (see Steps 1b and 3) |
 | Monarch Money (accounts, budgets, transactions) | Use `mmoney` skill |
+| Browser automation (scrape sites, fill forms, screenshots, Electron apps) | Use `mscully:agent-browser` skill — read `integrations/agent-browser.md` first |
 
 If the task doesn't fit any pattern, figure it out. Combine tools and skills. Read more skill files if the names look relevant. You're autonomous — act like it.
 

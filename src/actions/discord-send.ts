@@ -3,7 +3,8 @@
  * Send Discord messages as the Franklin bot.
  *
  * Usage:
- *   npx tsx src/scripts/discord_send.ts message --channel_id 123456789012345678 --text "hello"
+ *   npx tsx src/actions/discord-send.ts message --channel_id 123456789012345678 --text "hello"
+ *   npx tsx src/actions/discord-send.ts message --user_id 475783212891897857 --text "hello"
  */
 
 import { REST, Routes } from "discord.js";
@@ -36,13 +37,26 @@ const args = parseArgs(rest);
 
 async function main() {
   if (command === "message") {
-    if (!args.channel_id || !args.text) {
-      log.error("Usage: discord_send.ts message --channel_id <id> --text <text>");
+    if (!args.text) {
+      log.error("Usage: discord_send.ts message --channel_id <id> --text <text>  OR  --user_id <id> --text <text>");
       process.exit(1);
     }
     const token = await getDiscordToken();
     const rest = new REST().setToken(token);
-    const data = await rest.post(Routes.channelMessages(args.channel_id), {
+
+    let channelId = args.channel_id;
+    if (!channelId && args.user_id) {
+      const dm = await rest.post(Routes.userChannels(), {
+        body: { recipient_id: args.user_id },
+      }) as { id: string };
+      channelId = dm.id;
+    }
+    if (!channelId) {
+      log.error("Must provide --channel_id or --user_id");
+      process.exit(1);
+    }
+
+    const data = await rest.post(Routes.channelMessages(channelId), {
       body: { content: args.text },
     }) as { id: string };
     console.log(JSON.stringify({ ok: true, message_id: data.id }));
