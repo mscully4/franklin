@@ -4,9 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-Environment="PATH=/home/mike/.nvm/versions/node/v24.11.1/bin:/home/mike/.local/bin:/usr/local/bin:/usr/bin:/bin"
-WorkingDirectory=/home/mike/Workplace/Franklin
-ExecStart=/home/mike/.nvm/versions/node/v24.11.1/bin/npm run franklin
+Environment="PATH=/home/mjscully/.local/bin:/home/mjscully/.npm-global/bin:/home/mjscully/.bun/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/home/mjscully/franklin/.env
+WorkingDirectory=/home/mjscully/franklin
+ExecStart=/usr/bin/npm run franklin
 Restart=on-failure
 RestartSec=10
 

@@ -33,6 +33,8 @@ state/meetings/*
 
 # Local env and service config
 .envrc
+.env
+.env.local
 scripts/start-service.sh
 
 # Local Claude Code config
