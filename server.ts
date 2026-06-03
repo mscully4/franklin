@@ -3,7 +3,6 @@ import { readFileSync, readdirSync, writeFileSync, existsSync, mkdirSync } from 
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { Client, GatewayIntentBits, Partials } from "discord.js";
-import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { openDb } from "./src/db/index.js";
 import { SCOUT_INTERVALS_MS, readJson, writeJson } from "./src/config.js";
 import { createLogger } from "./src/logger.js";
@@ -257,7 +256,6 @@ app.listen(PORT, "0.0.0.0", () => {
 // ── Discord Bot ───────────────────────────────────────────────────────────────
 
 const DISCORD_HEARTBEAT_FILE = join(STATE, "discord_bot.json");
-const sm = new SecretsManagerClient({ region: "us-east-2" });
 
 function writeDiscordHeartbeat(status: string): void {
   writeFileSync(
@@ -266,24 +264,14 @@ function writeDiscordHeartbeat(status: string): void {
   );
 }
 
-async function fetchDiscordToken(): Promise<string> {
-  const delays = [5_000, 15_000, 30_000, 60_000, 120_000];
-  for (let attempt = 0; ; attempt++) {
-    try {
-      const response = await sm.send(new GetSecretValueCommand({ SecretId: "franklin/discord-bot-token" }));
-      if (!response.SecretString) throw new Error("Secret has no string value");
-      return response.SecretString;
-    } catch (err) {
-      const delay = delays[Math.min(attempt, delays.length - 1)];
-      log.error(`[discord] failed to fetch token (attempt ${attempt + 1}): ${(err as Error).message} — retrying in ${delay / 1000}s`);
-      writeDiscordHeartbeat("error");
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
+function getDiscordToken(): string {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) throw new Error("DISCORD_BOT_TOKEN not set — check .env file");
+  return token;
 }
 
 (async () => {
-  const discordToken = await fetchDiscordToken();
+  const discordToken = getDiscordToken();
 
   const settingsForAuth = readJson<{
     authorized_users?: Array<{ discord_user_id?: string }>;

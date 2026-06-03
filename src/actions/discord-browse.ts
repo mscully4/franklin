@@ -9,17 +9,13 @@
  */
 
 import { REST, Routes } from "discord.js";
-import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { createLogger } from "../logger.js";
 const log = createLogger("discord-browse");
 
-const SM_SECRET_ID = "franklin/discord-bot-token";
-const sm = new SecretsManagerClient({ region: "us-east-2" });
-
-async function getDiscordToken(): Promise<string> {
-  const response = await sm.send(new GetSecretValueCommand({ SecretId: SM_SECRET_ID }));
-  if (!response.SecretString) throw new Error("Secret has no string value");
-  return response.SecretString;
+function getDiscordToken(): string {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) throw new Error("DISCORD_BOT_TOKEN not set — check .env file");
+  return token;
 }
 
 function parseArgs(args: string[]): Record<string, string> {
@@ -58,7 +54,7 @@ const [, , command, ...rest] = process.argv;
 const args = parseArgs(rest);
 
 async function main() {
-  const token = await getDiscordToken();
+  const token = getDiscordToken();
   const rest = new REST().setToken(token);
 
   if (command === "guilds") {

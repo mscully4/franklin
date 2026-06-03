@@ -346,6 +346,13 @@ function checkDirectories(): CategoryResult {
 function checkDiscord(): CategoryResult {
   const checks: CheckResult[] = [];
 
+  // Token (env var, always checkable)
+  if (process.env.DISCORD_BOT_TOKEN) {
+    checks.push(ok("Bot token", "DISCORD_BOT_TOKEN is set"));
+  } else {
+    checks.push(err("Bot token", "DISCORD_BOT_TOKEN not set — check .env file"));
+  }
+
   if (!existsSync(DISCORD_STATUS_FILE)) {
     checks.push(skip("Bot status file", "Not found — server may not be running"));
     return { slug: "discord", label: "Discord", checks };

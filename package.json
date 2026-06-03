@@ -12,9 +12,6 @@
     "test": "node --import tsx/esm --test src/tests/*.test.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.1038.0",
-    "@aws-sdk/client-sns": "^3.1048.0",
-    "@aws-sdk/client-sqs": "^3.1048.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.8.0",
     "discord.js": "^14.26.3",
