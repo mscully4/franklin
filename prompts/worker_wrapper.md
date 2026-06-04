@@ -172,7 +172,7 @@ To use a skill: read `.claude/skills/<name>/SKILL.md` and follow its instruction
 | Store/recall knowledge | `mcp:gbrain:query()` to search, write to `~/brain/` directory + `gbrain sync --source franklin` to store (see Steps 1b and 3) |
 | Monarch Money (accounts, budgets, transactions) | Use `mmoney` skill |
 | Browser automation (scrape sites, fill forms, screenshots, Electron apps) | Use `agent-browser` CLI — read `integrations/agent-browser.md` first |
-| Home Assistant (smart home: lights, switches, sensors, climate, etc.) | Use `hassio` CLI — read `integrations/hassio.md` first |
+| Home Assistant (smart home: lights, switches, sensors, climate, etc.) | Use `hassio` skill |
 
 If the task doesn't fit any pattern, figure it out. Combine tools and skills. Read more skill files if the names look relevant. You're autonomous — act like it.
 

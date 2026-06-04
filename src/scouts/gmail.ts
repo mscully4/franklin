@@ -100,7 +100,7 @@ function main(): void {
 
   let raw: string;
   try {
-    raw = execSync("gws gmail +triage --format json --max 30", {
+    raw = execSync("gws gmail +triage --query 'is:unread newer_than:1d' --format json --max 30", {
       cwd: ROOT,
       timeout: 30_000,
     }).toString();

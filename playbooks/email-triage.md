@@ -5,7 +5,7 @@ Fetch unread emails, flag important ones, filter spam. Run daily.
 ## Phase 1 — Gather
 
 ```bash
-gws gmail +triage --format json --max 50 > /tmp/email-triage.json
+gws gmail +triage --query 'is:unread newer_than:1d' --format json --max 50 > /tmp/email-triage.json
 
 # Fetch existing Gmail filters to avoid re-suggesting already-filtered senders
 gws gmail users settings filters list --params '{"userId": "me"}' --format json > /tmp/gmail-filters.json

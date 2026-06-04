@@ -12,7 +12,7 @@ Run each cycle when `"gws"` is in `integrations`.
 
 Fetch unread inbox:
 ```bash
-gws gmail +triage --format json --max 20 | jq '.messages | map({id, from, subject, date})'
+gws gmail +triage --query 'is:unread newer_than:1d' --format json --max 20 | jq '.messages | map({id, from, subject, date})'
 ```
 
 For each email in the result:
