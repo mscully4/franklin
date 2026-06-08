@@ -1,6 +1,6 @@
 {
   "name": "Franklin",
-  "claude_bin": "claude-requesty",
+  "claude_bin": "claude",
   "mode": "allow_send",
   "timezone": "America/Chicago",
   "avatar": "Franklin.jpg",

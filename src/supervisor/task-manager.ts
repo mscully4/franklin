@@ -253,8 +253,10 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   const promptArg = `Franklin codebase: ${ROOT}. Read ${ROOT}/prompts/worker_wrapper.md and execute. The task ID is ${task.id}.${questRef}${integrationsStr}`;
 
   // Spawn claude process
+  const pluginDir = getPluginDir();
+  const pluginArgs = pluginDir ? ["--plugin-dir", pluginDir] : [];
   const child = spawn(getClaudeBin(),
-    ["--dangerously-skip-permissions", "--print", "--output-format", "json", "--add-dir", ROOT, "-p", promptArg],
+    ["--bare", "--dangerously-skip-permissions", "--print", "--output-format", "json", ...pluginArgs, "--add-dir", ROOT, "-p", promptArg],
     { cwd: "/tmp", stdio: ["ignore", "pipe", "pipe"], detached: false },
   );
 

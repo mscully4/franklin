@@ -28,6 +28,7 @@ export function appendDispatchLog(entry: DispatchLogEntry): void {
 export function runBrain(): void {
   log.info("Spawning brain...");
   const args: string[] = [
+    "--bare",
     "--dangerously-skip-permissions",
     "--print",
   ];
