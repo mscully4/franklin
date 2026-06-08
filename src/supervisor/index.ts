@@ -13,6 +13,7 @@ import {
   generateDmTasks, generateScheduledTasks,
   dispatchTasks, updateScheduledTaskResult,
 } from "./pipeline.js";
+import { assembleIntegrationSkills } from "./integration-skills.js";
 import log from "../logger.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -189,6 +190,12 @@ if (!checkLock()) {
 mkdirSync(join(ROOT, "state"), { recursive: true });
 
 checkIntegrations();
+
+const settings = readJson<{ integrations?: Array<string | Record<string, unknown>> }>(SETTINGS_FILE);
+if (settings?.integrations) {
+  assembleIntegrationSkills(settings.integrations as Array<string | { name: string; skillLocation?: string }>, ROOT)
+    .catch((err) => log.error("Failed to assemble integration skills:", err));
+}
 
 initTaskManager(ROOT, appendDispatchLog);
 

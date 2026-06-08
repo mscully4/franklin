@@ -195,6 +195,15 @@ function formatIntegration(entry: Integration): string {
   return `${entry.name}${desc}${envs}`;
 }
 
+function getClaudeBin(): string {
+  try {
+    const settings = readJson<{ claude_bin?: string }>(join(ROOT, "state", "settings.json"));
+    return settings?.claude_bin ?? "claude";
+  } catch {
+    return "claude";
+  }
+}
+
 function formatIntegrations(): string {
   try {
     const settings = readJson<{ integrations?: Integration[] }>(join(ROOT, "state", "settings.json"));
@@ -244,7 +253,7 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   const promptArg = `Franklin codebase: ${ROOT}. Read ${ROOT}/prompts/worker_wrapper.md and execute. The task ID is ${task.id}.${questRef}${integrationsStr}`;
 
   // Spawn claude process
-  const child = spawn("claude",
+  const child = spawn(getClaudeBin(),
     ["--dangerously-skip-permissions", "--print", "--output-format", "json", "--add-dir", ROOT, "-p", promptArg],
     { cwd: "/tmp", stdio: ["ignore", "pipe", "pipe"], detached: false },
   );

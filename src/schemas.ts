@@ -109,6 +109,7 @@ export const SettingsSchema = z.object({
         name: z.string(),
         description: z.string().optional(),
         env: z.array(z.string()).optional(),
+        skillLocation: z.string().optional(),
       }),
     ]),
   ),

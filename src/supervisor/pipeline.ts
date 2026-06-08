@@ -10,6 +10,7 @@ import {
 } from "../config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation } from "../config.js";
 import { spawnBackgroundTask } from "./task-manager.js";
+import { getPluginDir } from "./integration-skills.js";
 import log from "../logger.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -26,14 +27,18 @@ export function appendDispatchLog(entry: DispatchLogEntry): void {
 
 export function runBrain(): void {
   log.info("Spawning brain...");
+  const args: string[] = [
+    "--dangerously-skip-permissions",
+    "--print",
+  ];
+  const pluginDir = getPluginDir();
+  if (pluginDir) {
+    args.push("--plugin-dir", pluginDir);
+  }
+  args.push("-p", "Read prompts/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.");
   const result = spawnSync(
     "claude",
-    [
-      "--dangerously-skip-permissions",
-      "--print",
-      "-p",
-      "Read prompts/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.",
-    ],
+    args,
     { cwd: ROOT, stdio: "inherit", timeout: 5 * 60_000 },
   );
 

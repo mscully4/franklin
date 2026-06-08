@@ -44,7 +44,7 @@ interface CategoryResult {
   checks: CheckResult[];
 }
 
-type IntegrationEntry = string | { name: string; description?: string; env?: string[] };
+type IntegrationEntry = string | { name: string; description?: string; env?: string[]; skillLocation?: string };
 
 interface SettingsLike {
   integrations?: IntegrationEntry[];
@@ -162,6 +162,24 @@ function checkIntegrations(settings: SettingsLike | null): CategoryResult {
           checks.push(warn(`${name}: ${v}`, "Not set"));
         } else {
           checks.push(skip(`${name}: ${v}`, "Skipped — CLI not found"));
+        }
+      }
+    }
+
+    // Check skill path
+    if (typeof entry !== "string" && entry.skillLocation) {
+      const loc = entry.skillLocation;
+      if (/^https?:\/\//.test(loc)) {
+        checks.push(skip(`${name} skill`, `URL — ${loc}`));
+      } else {
+        const skillDir = join(ROOT, loc);
+        if (existsSync(skillDir)) {
+          const hasSkillMd = existsSync(join(skillDir, "SKILL.md"));
+          checks.push(hasSkillMd
+            ? ok(`${name} skill`, `${loc}/SKILL.md exists`)
+            : warn(`${name} skill`, `${loc} exists but no SKILL.md`));
+        } else {
+          checks.push(err(`${name} skill`, `${loc} not found`));
         }
       }
     }
