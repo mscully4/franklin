@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from "child_process";
-import { mkdirSync } from "fs";
+import { mkdirSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { z } from "zod";
@@ -25,22 +25,29 @@ export function appendDispatchLog(entry: DispatchLogEntry): void {
   logDb.close();
 }
 
+export function buildBrainSpawnConfig(root: string, playbooksDir: string): { args: string[]; cwd: string } {
+  const args: string[] = ["--bare", "--dangerously-skip-permissions", "--print"];
+  let playbooks: string[] = [];
+  try {
+    playbooks = readdirSync(playbooksDir).filter((f) => f.endsWith(".md"));
+  } catch {
+    // no playbooks directory
+  }
+  const playbookLine = playbooks.length
+    ? `\n\nAvailable playbooks (in playbooks/): ${playbooks.join(", ")}`
+    : "";
+  args.push("--add-dir", root);
+  args.push("-p", `Read prompts/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.${playbookLine}`);
+  return { args, cwd: "/tmp" };
+}
+
 export function runBrain(): void {
   log.info("Spawning brain...");
-  const args: string[] = [
-    "--bare",
-    "--dangerously-skip-permissions",
-    "--print",
-  ];
-  const pluginDir = getPluginDir();
-  if (pluginDir) {
-    args.push("--plugin-dir", pluginDir);
-  }
-  args.push("-p", "Read prompts/brain.md and execute the instructions exactly. Do not stop until state/delegation.json is written.");
+  const { args, cwd } = buildBrainSpawnConfig(ROOT, join(ROOT, "playbooks"));
   const result = spawnSync(
     "claude",
     args,
-    { cwd: ROOT, stdio: "inherit", timeout: 5 * 60_000 },
+    { cwd, stdio: "inherit", timeout: 5 * 60_000 },
   );
 
   if (result.status !== 0) {

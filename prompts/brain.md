@@ -163,6 +163,18 @@ One quest per user request. Do not split a single user request into multiple que
 
 ---
 
+## Step 5a — Playbook-driven quests
+
+Some quests should follow a structured multi-phase playbook rather than leaving the worker to figure out the approach. When a quest maps clearly to one of the available playbooks (listed at the end of your launch prompt), include a `playbook` field in the task context set to the filename (e.g. `"finance-categorization.md"`). The worker will read `playbooks/<playbook>` and follow its phases.
+
+Use a playbook when:
+- The user's request matches the playbook's stated purpose
+- The task has a known multi-phase structure that the playbook already captures
+
+Don't force a playbook onto a task that only partially overlaps — workers handle unstructured quests fine.
+
+---
+
 ## Step 6 — Socket Health Check
 
 Read `state/discord_bot.json`. If `status !== "connected"` OR `updated_at` is more than 5 minutes old:

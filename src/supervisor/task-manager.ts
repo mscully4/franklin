@@ -223,6 +223,14 @@ function formatIntegrations(): string {
 
 // ── Spawn background task ───────────────────────────────────────────────────
 
+export function buildWorkerSpawnConfig(root: string, pluginDir: string | null, promptArg: string): { args: string[]; cwd: string } {
+  const pluginArgs = pluginDir ? ["--plugin-dir", pluginDir] : [];
+  return {
+    args: ["--bare", "--dangerously-skip-permissions", "--print", "--output-format", "json", ...pluginArgs, "--add-dir", root, "-p", promptArg],
+    cwd: "/tmp",
+  };
+}
+
 export function spawnBackgroundTask(task: DelegationTask): void {
   const dispatchedAt = new Date().toISOString();
   const timeoutMs = resolveTaskTimeout(task);
@@ -255,11 +263,8 @@ export function spawnBackgroundTask(task: DelegationTask): void {
 
   // Spawn claude process
   const pluginDir = getPluginDir();
-  const pluginArgs = pluginDir ? ["--plugin-dir", pluginDir] : [];
-  const child = spawn(getClaudeBin(),
-    ["--bare", "--dangerously-skip-permissions", "--print", "--output-format", "json", ...pluginArgs, "--add-dir", ROOT, "-p", promptArg],
-    { cwd: "/tmp", stdio: ["ignore", "pipe", "pipe"], detached: false },
-  );
+  const { args: workerArgs, cwd: workerCwd } = buildWorkerSpawnConfig(ROOT, pluginDir, promptArg);
+  const child = spawn(getClaudeBin(), workerArgs, { cwd: workerCwd, stdio: ["ignore", "pipe", "pipe"], detached: false });
 
   const pid = child.pid ?? 0;
 
