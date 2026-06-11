@@ -16,7 +16,7 @@ import { readdirSync, readFileSync, statSync, rmSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
-import { createLogger } from "./logger.js";
+import { createLogger } from "../logger.js";
 const log = createLogger("cleanup");
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

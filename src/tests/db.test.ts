@@ -72,7 +72,7 @@ describe("surfaced table", () => {
     db.upsertSeen("github:pr:repo/old", "github");
     // Manually backdate last_seen_at
     const cutoff = new Date(Date.now() - 8 * 86_400_000).toISOString();
-    (db as unknown as { _db: import("better-sqlite3").Database }).close; // just close normally
+    db.close();
     // Re-open and manually insert a stale row
     const db2 = openDb(":memory:");
     db2.upsertSeen("github:pr:repo/fresh", "github");

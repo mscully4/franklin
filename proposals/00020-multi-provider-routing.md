@@ -21,14 +21,13 @@ time — no per-task wiring required.
 ```json
 "providers": {
   "claude": {
-    "bin": "/usr/local/bin/claude",
-    "env": {}
+    "bin": "claude"
   },
   "deepseek": {
-    "bin": "/usr/local/bin/claude",
+    "bin": "claude",
+    "base_url": "https://api.deepseek.com",
     "env": {
-      "ANTHROPIC_BASE_URL": "https://api.deepseek.com",
-      "ANTHROPIC_API_KEY": "sk-..."
+      "ANTHROPIC_API_KEY": "$DEEPSEEK_API_KEY"
     }
   }
 },
@@ -37,7 +36,8 @@ time — no per-task wiring required.
 
 Each provider entry specifies:
 - `bin` — path to the Claude Code CLI binary (can be shared across providers)
-- `env` — environment variables merged over the process env at spawn time
+- `base_url` — static value set as `ANTHROPIC_BASE_URL` at spawn time
+- `env` — env var mapping for spawn time. Keys are the env var names Claude Code expects; values are either a `$`-prefixed env var name to read from the process environment, or a literal static value (no `$`)
 
 Since Claude Code supports `ANTHROPIC_BASE_URL`, providers like DeepSeek,
 Bedrock, or local Ollama don't need a separate binary.
@@ -66,11 +66,44 @@ Applies to all tasks of that type unless overridden at the task level.
 
 Explicit `provider` field on a scheduled task beats type-level routing.
 
+### Quota-aware fallback
+
+When the resolved provider is `claude`, Franklin checks the live Claude Pro
+subscription utilization before spawning. If utilization exceeds a configured
+threshold, the task is rerouted to a fallback provider automatically.
+
+```json
+"quota_threshold": 75,
+"quota_fallback": "deepseek"
+```
+
+- `quota_threshold` — 5-hour utilization percentage at which fallback kicks in (default 75)
+- `quota_fallback` — provider name to use when threshold is exceeded
+
+The utilization is fetched from `GET https://api.anthropic.com/api/oauth/usage`
+(requires `anthropic-beta: oauth-2025-04-20`), authenticated with the OAuth token
+Claude Code stores at `~/.claude/.credentials.json`. The response shape:
+
+```json
+{
+  "five_hour": { "utilization": 12.0, "resets_at": "..." },
+  "seven_day": { "utilization": 9.0, "resets_at": "..." }
+}
+```
+
+`utilization` is a percentage (0–100). Franklin uses the `five_hour` window as the
+routing signal — it resets every 5 hours, so pressure is transient.
+
+The quota is fetched once per supervisor cycle and cached in memory (fire-and-forget,
+non-blocking). `resolveProvider` reads the cache synchronously. On the first cycle the
+cache is empty and the threshold check is skipped (safe default — Claude is used).
+
 ### Resolution order (highest → lowest priority)
 
 1. Task-level `provider` field
 2. `model_routing[task.type]`
-3. `default_provider`
+3. Quota check: if resolved provider is `claude` and `five_hour.utilization >= quota_threshold` → use `quota_fallback`
+4. `default_provider`
 
 ### Spawn-time env merge
 
@@ -79,7 +112,11 @@ In `task-manager.ts`, when spawning a worker:
 ```typescript
 const providerName = resolveProvider(task);
 const provider = settings.providers?.[providerName];
-const spawnEnv = { ...process.env, ...(provider?.env ?? {}) };
+const spawnEnv = { ...process.env };
+if (provider?.base_url) spawnEnv.ANTHROPIC_BASE_URL = provider.base_url;
+for (const [key, val] of Object.entries(provider?.env ?? {})) {
+  spawnEnv[key] = val.startsWith("$") ? (process.env[val.slice(1)] ?? "") : val;
+}
 const bin = provider?.bin ?? settings.claude_bin;
 // spawn bin with spawnEnv
 ```
@@ -88,11 +125,11 @@ const bin = provider?.bin ?? settings.claude_bin;
 
 | File | Change |
 |------|--------|
-| `state/settings.json` | Add `providers`, `default_provider`, `model_routing` |
-| `src/schemas.ts` | Add `ProviderEntry` schema, extend `SettingsSchema` |
-| `src/config.ts` | Add `resolveProvider(task, settings)` helper |
+| `state/settings.json` | Add `providers`, `default_provider`, `model_routing`, `quota_threshold`, `quota_fallback` |
+| `src/schemas.ts` | Add `ProviderEntry` schema, extend `SettingsSchema`; add `provider` field to task schemas |
+| `src/config.ts` | Add `getCachedQuota()`, `refreshQuotaCache()`, `resolveProvider(task, settings)` |
 | `src/supervisor/task-manager.ts` | Use provider bin + env at worker spawn |
-| Scheduled task schema | Add optional `provider` field |
+| `src/supervisor/index.ts` | Fire `refreshQuotaCache()` once per cycle (non-blocking) |
 
 ## Trade-offs
 
@@ -114,3 +151,4 @@ const bin = provider?.bin ?? settings.claude_bin;
 - Dynamic/brain-driven routing per task content
 - Provider health checks or automatic failover
 - Cost-budget enforcement (e.g., stop using Claude after $X/week)
+- 7-day utilization as a routing signal (5-hour window is sufficient; 7-day pressure is too slow-moving to be actionable)
