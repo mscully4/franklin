@@ -87,6 +87,7 @@ app.get("/api/state", (_req, res) => {
       category: quest.category ?? null,
       costUSD: costUSD > 0 ? costUSD : null,
       workerModel: (quest.worker_model as string) ?? null,
+      provider: (quest.provider as string) ?? null,
       recentLogs,
       logCount: logs.length,
       raw: quest,
@@ -112,6 +113,7 @@ app.get("/api/state", (_req, res) => {
         category: quest.category ?? null,
         costUSD: costUSD > 0 ? costUSD : null,
         workerModel: (quest.worker_model as string) ?? null,
+        provider: (quest.provider as string) ?? null,
         raw: quest,
       };
     })

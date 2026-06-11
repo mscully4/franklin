@@ -81,11 +81,12 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
       pr_url?: string;
       outcome?: string;
       agent_status?: string;
+      provider?: string;
     }): void {
       const now = new Date().toISOString();
       db.prepare(`
-        INSERT INTO quests (id, status, objective, approach, requested_by, source_platform, source_task_id, ticket_key, sandbox_path, pr_url, outcome, agent_status, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO quests (id, status, objective, approach, requested_by, source_platform, source_task_id, ticket_key, sandbox_path, pr_url, outcome, agent_status, provider, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           status = excluded.status,
           objective = excluded.objective,
@@ -98,6 +99,7 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
           pr_url = excluded.pr_url,
           outcome = excluded.outcome,
           agent_status = excluded.agent_status,
+          provider = excluded.provider,
           updated_at = excluded.updated_at
       `).run(
         quest.id, quest.status, quest.objective,
@@ -106,6 +108,7 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
         quest.source_task_id ?? null, quest.ticket_key ?? null,
         quest.sandbox_path ?? null, quest.pr_url ?? null,
         quest.outcome ?? null, quest.agent_status ?? "pending",
+        quest.provider ?? null,
         now, now,
       );
     },

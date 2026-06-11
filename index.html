@@ -631,6 +631,7 @@
           q.prUrl ? `<a href="${esc(q.prUrl)}" target="_blank" class="tag tag-blue">PR</a>` : '',
           q.costUSD != null ? `<span class="tag tag-yellow" title="Total cost for this quest">$${q.costUSD.toFixed(2)}</span>` : '',
           modelShort ? `<span class="tag" style="color:var(--muted)" title="Worker model">${esc(modelShort)}</span>` : '',
+          q.provider && q.provider !== 'claude' ? `<span class="tag tag-orange" title="Provider">${esc(q.provider)}</span>` : '',
         ].filter(Boolean).join(' ');
 
         const logs = q.recentLogs.map(l => `
@@ -667,11 +668,12 @@
         const prTag = q.prUrl ? ` <a href="${esc(q.prUrl)}" target="_blank" class="tag tag-blue">PR</a>` : '';
         const costTag = q.costUSD != null ? ` <span class="tag tag-yellow" title="Total cost for this quest">$${q.costUSD.toFixed(2)}</span>` : '';
         const modelTag = q.workerModel ? ` <span class="tag" style="color:var(--muted)" title="Worker model">${esc(q.workerModel.replace(/^claude-/, ''))}</span>` : '';
+        const providerTag = q.provider && q.provider !== 'claude' ? ` <span class="tag tag-orange" title="Provider">${esc(q.provider)}</span>` : '';
         return `
           <div class="quest-card-completed" style="cursor:pointer" onclick="showQuestDetail(window.__quests[${qIdx}])">
             <div class="quest-head">
               <span><span class="quest-id">${esc(q.id)}</span> <span class="quest-age">${q.updatedAgo}</span></span>
-              <span>${statusTag}${scheduledTag}${categoryTag}${prTag}${costTag}${modelTag}</span>
+              <span>${statusTag}${scheduledTag}${categoryTag}${prTag}${costTag}${modelTag}${providerTag}</span>
             </div>
             <div class="quest-detail"><span class="quest-detail-label">objective</span> ${esc(q.objective)}</div>
             ${q.outcome ? `<div class="quest-detail"><span class="quest-detail-label">outcome</span> ${esc(q.outcome)}</div>` : ''}

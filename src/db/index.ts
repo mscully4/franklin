@@ -157,6 +157,9 @@ function applyMigrations(db: InstanceType<typeof Database>): void {
   if (!questCols.some((c) => c.name === "category")) {
     db.exec(`ALTER TABLE quests ADD COLUMN category TEXT`);
   }
+  if (!questCols.some((c) => c.name === "provider")) {
+    db.exec(`ALTER TABLE quests ADD COLUMN provider TEXT`);
+  }
 
   // Deduplicate dispatch_log: keep only the latest row per task_id
   const dupCount = (db.prepare(
