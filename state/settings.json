@@ -19,6 +19,35 @@
       "discord_user_id": "1506790929044869232"
     }
   ],
+  "providers": {
+    "claude": {
+      "bin": "claude"
+    },
+    "deepseek": {
+      "bin": "claude",
+      "base_url": "https://api.deepseek.com",
+      "env": {
+        "ANTHROPIC_API_KEY": "$DEEPSEEK_API_KEY"
+      }
+    }
+  },
+  "default_provider": "claude",
+  "provider_strategy": [
+    {
+      "provider": "claude",
+      "fallback_when": {
+        "quota_5h_gte": 75,
+        "quota_7d_gte": 85
+      }
+    },
+    {
+      "provider": "deepseek"
+    }
+  ],
+  "model_routing": {
+    "dm_reply": "deepseek",
+    "email_notify": "deepseek"
+  },
   "feature_flags": {
     "skip_docker": true
   },

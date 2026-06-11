@@ -46,7 +46,12 @@ export const DelegationTaskSchema = z.object({
     })
     .nullable()
     .optional(),
-});
+  provider: z.string().optional(),
+  model: z.string().optional(),
+}).refine(
+  (data) => !(data.model && !data.provider),
+  { message: "model requires provider to be set", path: ["model"] },
+);
 
 export type DelegationTask = z.infer<typeof DelegationTaskSchema>;
 
@@ -79,7 +84,12 @@ export const ScheduledTaskSchema = z.object({
   fail_count: z.number().optional(),
   last_fail: z.string().nullable().optional(),
   disabled: z.boolean().optional(),
-});
+  provider: z.string().optional(),
+  model: z.string().optional(),
+}).refine(
+  (data) => !(data.model && !data.provider),
+  { message: "model requires provider to be set", path: ["model"] },
+);
 
 export type ScheduledTask = z.infer<typeof ScheduledTaskSchema>;
 
@@ -88,6 +98,7 @@ export type ScheduledTask = z.infer<typeof ScheduledTaskSchema>;
 export const SettingsSchema = z.object({
   name: z.string(),
   mode: z.string(),
+  claude_bin: z.string().optional(),
   owner_user_id: z.string().optional(),
   timezone: z.string().optional(),
   avatar: z.string().optional(),
@@ -115,6 +126,25 @@ export const SettingsSchema = z.object({
   ),
   disabled_scouts: z.array(z.string()).optional(),
   feature_flags: z.record(z.string(), z.unknown()).optional(),
+  providers: z.record(
+    z.string(),
+    z.object({
+      bin: z.string().optional(),
+      base_url: z.string().optional(),
+      env: z.record(z.string(), z.string()).optional(),
+    }),
+  ).optional(),
+  default_provider: z.string().optional(),
+  model_routing: z.record(z.string(), z.string()).optional(),
+  provider_strategy: z.array(
+    z.object({
+      provider: z.string(),
+      fallback_when: z.object({
+        quota_5h_gte: z.number().optional(),
+        quota_7d_gte: z.number().optional(),
+      }).optional(),
+    }),
+  ).optional(),
 });
 
 export type Settings = z.infer<typeof SettingsSchema>;
