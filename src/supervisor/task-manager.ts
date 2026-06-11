@@ -14,8 +14,8 @@ import { spawn } from "child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, createWriteStream, readFileSync } from "fs";
 import { join } from "path";
 import { openDb } from "../db/index.js";
-import { readJson, readJsonWithSchema, writeJson, resolveTaskTimeout, WorkerResultSchema } from "../config.js";
-import type { DelegationTask, WorkerResult, DispatchLogEntry } from "../config.js";
+import { readJson, readJsonWithSchema, writeJson, resolveTaskTimeout, resolveProvider, WorkerResultSchema } from "../config.js";
+import type { DelegationTask, WorkerResult, DispatchLogEntry, Settings } from "../config.js";
 import log from "../logger.js";
 import { z } from "zod";
 import { getPluginDir } from "./integration-skills.js";
@@ -134,7 +134,7 @@ function taskNeedsQuestState(task: DelegationTask): boolean {
 
 // ── Quest state file creation ───────────────────────────────────────────────
 
-function createQuestState(task: DelegationTask, dispatchedAt: string): string {
+function createQuestState(task: DelegationTask, dispatchedAt: string, provider?: string): string {
   const ctx = task.context;
   const activeDir = join(ROOT, "state", "quests", "active");
   const completedDir = join(ROOT, "state", "quests", "completed");
@@ -163,6 +163,7 @@ function createQuestState(task: DelegationTask, dispatchedAt: string): string {
     outcome: null,
     skill_updates: [],
     agent_status: "running",
+    provider: provider ?? null,
   });
 
   questDb.upsertQuest({
@@ -174,6 +175,7 @@ function createQuestState(task: DelegationTask, dispatchedAt: string): string {
     source_platform: "delegation",
     source_task_id: task.id,
     agent_status: "running",
+    provider: provider ?? undefined,
   });
 
   questDb.close();
@@ -235,10 +237,15 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   const dispatchedAt = new Date().toISOString();
   const timeoutMs = resolveTaskTimeout(task);
   const needsQuest = taskNeedsQuestState(task);
-  let questId: string | null = null;
 
+  // Resolve provider early so it can be recorded on the quest
+  const settings = readJson<Settings>(join(ROOT, "state", "settings.json"));
+  const providerName = resolveProvider(task, settings ?? {});
+  const providerConfig = settings?.providers?.[providerName];
+
+  let questId: string | null = null;
   if (needsQuest) {
-    questId = createQuestState(task, dispatchedAt);
+    questId = createQuestState(task, dispatchedAt, providerName);
   }
 
   // Insert into running_tasks table
@@ -261,10 +268,20 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   const integrationsStr = formatIntegrations();
   const promptArg = `Franklin codebase: ${ROOT}. Read ${ROOT}/prompts/worker_wrapper.md and execute. The task ID is ${task.id}.${questRef}${integrationsStr}`;
 
+  // Build spawn env from resolved provider
+  const spawnEnv: NodeJS.ProcessEnv = { ...process.env };
+  if (providerConfig?.base_url) spawnEnv.ANTHROPIC_BASE_URL = providerConfig.base_url;
+  for (const [key, val] of Object.entries(providerConfig?.env ?? {})) {
+    spawnEnv[key] = val.startsWith("$") ? (process.env[val.slice(1)] ?? "") : val;
+  }
+  if (task.model) spawnEnv.ANTHROPIC_MODEL = task.model;
+
+  const bin = providerConfig?.bin ?? settings?.claude_bin ?? "claude";
+
   // Spawn claude process
   const pluginDir = getPluginDir();
   const { args: workerArgs, cwd: workerCwd } = buildWorkerSpawnConfig(ROOT, pluginDir, promptArg);
-  const child = spawn(getClaudeBin(), workerArgs, { cwd: workerCwd, stdio: ["ignore", "pipe", "pipe"], detached: false });
+  const child = spawn(bin, workerArgs, { cwd: workerCwd, env: spawnEnv, stdio: ["ignore", "pipe", "pipe"], detached: false });
 
   const pid = child.pid ?? 0;
 

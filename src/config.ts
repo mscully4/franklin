@@ -3,6 +3,8 @@
  */
 
 import { readFileSync, writeFileSync } from "fs";
+import { homedir } from "os";
+import { join } from "path";
 import { z } from "zod";
 import log from "./logger.js";
 
@@ -57,6 +59,86 @@ export interface DispatchLogEntry {
   summary: string | null;
   cost_usd?: number | null;
   quest_id?: string | null;
+}
+
+// ── Provider resolution ───────────────────────────────────────────────────────
+
+interface QuotaCache {
+  five_hour: number;
+  seven_day: number;
+  fetched_at: number;
+}
+
+let _quotaCache: QuotaCache | null = null;
+
+export function getCachedQuota(): { five_hour: number; seven_day: number } {
+  return { five_hour: _quotaCache?.five_hour ?? 0, seven_day: _quotaCache?.seven_day ?? 0 };
+}
+
+export async function refreshQuotaCache(): Promise<void> {
+  try {
+    const credsRaw = readFileSync(join(homedir(), ".claude", ".credentials.json"), "utf8");
+    const token = (JSON.parse(credsRaw) as { claudeAiOauth?: { accessToken?: string } })?.claudeAiOauth?.accessToken;
+    if (!token) return;
+
+    const res = await fetch("https://api.anthropic.com/api/oauth/usage", {
+      headers: {
+        "Accept": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "anthropic-beta": "oauth-2025-04-20",
+        "User-Agent": "claude-code/2.1.172",
+      },
+    });
+    if (!res.ok) return;
+
+    const data = await res.json() as {
+      five_hour?: { utilization: number } | null;
+      seven_day?: { utilization: number } | null;
+    };
+    _quotaCache = {
+      five_hour: data.five_hour?.utilization ?? 0,
+      seven_day: data.seven_day?.utilization ?? 0,
+      fetched_at: Date.now(),
+    };
+    log.debug(`Quota: 5h=${_quotaCache.five_hour}% 7d=${_quotaCache.seven_day}%`);
+  } catch {
+    // leave cache as-is on failure
+  }
+}
+
+export function resolveProvider(
+  task: { type: string; provider?: string },
+  settings: { provider_strategy?: Array<{ provider: string; fallback_when?: { quota_5h_gte?: number; quota_7d_gte?: number } }>; default_provider?: string },
+): string {
+  // Task-level override beats everything
+  if (task.provider) return task.provider;
+
+  const strategy = settings.provider_strategy;
+  if (!strategy?.length) return settings.default_provider ?? "claude";
+
+  const { five_hour, seven_day } = getCachedQuota();
+
+  for (let i = 0; i < strategy.length; i++) {
+    const entry = strategy[i];
+    const { fallback_when } = entry;
+
+    // No conditions — this is the terminal fallback
+    if (!fallback_when) return entry.provider;
+
+    const over5h = fallback_when.quota_5h_gte !== undefined && five_hour >= fallback_when.quota_5h_gte;
+    const over7d = fallback_when.quota_7d_gte !== undefined && seven_day >= fallback_when.quota_7d_gte;
+
+    if (!over5h && !over7d) return entry.provider;
+
+    // Threshold exceeded — try next in chain
+    const next = strategy[i + 1];
+    if (next) {
+      log.info(`Provider ${entry.provider} quota exceeded (5h=${five_hour}% 7d=${seven_day}%) — falling back to ${next.provider}`);
+    }
+  }
+
+  // Exhausted strategy — use last entry
+  return strategy[strategy.length - 1].provider;
 }
 
 // ── JSON helpers ─────────────────────────────────────────────────────────────

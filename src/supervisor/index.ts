@@ -2,7 +2,7 @@ import { spawn } from "child_process";
 import { mkdirSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { SCOUT_INTERVALS_MS, readJson, readJsonWithSchema, writeJson, DelegationSchema } from "../config.js";
+import { SCOUT_INTERVALS_MS, readJson, readJsonWithSchema, writeJson, DelegationSchema, refreshQuotaCache } from "../config.js";
 import type { DelegationTask, Delegation } from "../config.js";
 import { initTaskManager, reapTasks, writeInflightSignals } from "./task-manager.js";
 import { openDb } from "../db/index.js";
@@ -89,6 +89,8 @@ function runCycle(startedAt: string): void {
   const heartbeat = setInterval(() => writeLock(startedAt), 30_000);
   const stopHeartbeat = () => clearInterval(heartbeat);
   try {
+    refreshQuotaCache().catch(() => {}); // fire-and-forget; cache used next cycle
+
     const lastRun = readLastRun();
 
     const settings = readJson<{ disabled_scouts?: string[] }>(SETTINGS_FILE);
