@@ -20,21 +20,26 @@
     }
   ],
   "providers": {
-    "claude": {
+    "anthropic": {
       "bin": "claude"
     },
     "deepseek": {
       "bin": "claude",
       "base_url": "https://api.deepseek.com",
       "env": {
-        "ANTHROPIC_API_KEY": "$DEEPSEEK_API_KEY"
+        "ANTHROPIC_API_KEY": "$DEEPSEEK_API_KEY",
+        "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
+        "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash"
       }
     }
   },
-  "default_provider": "claude",
+  "default_provider": "anthropic",
   "provider_strategy": [
     {
-      "provider": "claude",
+      "provider": "anthropic",
       "fallback_when": {
         "quota_5h_gte": 75,
         "quota_7d_gte": 85
@@ -84,10 +89,24 @@
         "IMMICH_API_KEY"
       ],
       "skillLocation": "./skills/immich"
+    },
+    {
+      "name": "openscad",
+      "description": "OpenSCAD 3D CAD modeler CLI"
     }
   ],
   "disabled_scouts": [
     "gmail",
     "calendar"
-  ]
+  ],
+  "webhook": {
+    "port": 9001,
+    "ws_dir": "/usr/local/lib/franklin/ws",
+    "github_owner": "mscully4",
+    "repos": [
+      { "github": "Mothership", "local": "mothership" },
+      { "github": "poly-ball", "local": "poly-ball" },
+      { "github": "cad-projects", "local": "cad-projects" }
+    ]
+  }
 }

@@ -269,7 +269,17 @@ The next worker will see the user's reply in its message context plus the conver
 
 ## Step 3 — Store learnings to ~/brain/
 
-If the task produced something worth remembering for next time, write it as a markdown page to the `~/brain/` directory. **Always write to files — never use `gbrain put`.** The filesystem is the source of truth. Only store discrete, reusable knowledge — not routine task output.
+**This step is required.** Before writing your result, answer each of these questions explicitly:
+
+1. **New facts** — Did you learn something about a person, company, service, or project that isn't already in `~/brain/`?
+2. **Anomalies** — Did something fail, spike, or behave unexpectedly? Do you understand why?
+3. **Preferences** — Did the user express a preference, correction, or instruction about how Franklin should behave?
+4. **Decisions** — Was a decision made that will affect future work on this project?
+
+If yes to any: write to `~/brain/` before proceeding to Step 4.
+If no to all: skip — but you must have actually considered each question. "Nothing to store" from a complex quest is a red flag.
+
+Write to `~/brain/` as a markdown page. **Always write to files — never use `gbrain put`.** The filesystem is the source of truth. Only store discrete, reusable knowledge — not routine task output.
 
 ### Where to file
 

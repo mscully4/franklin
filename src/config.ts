@@ -141,6 +141,37 @@ export function resolveProvider(
   return strategy[strategy.length - 1].provider;
 }
 
+/**
+ * Build a clean env for spawning a provider process.
+ * Clears all env keys owned by any provider before applying the selected one,
+ * so keys from a previous provider (or a stale .env) never bleed through.
+ */
+export function buildProviderEnv(
+  providerName: string,
+  settings: { providers?: Record<string, { bin?: string; base_url?: string; env?: Record<string, string> }>; claude_bin?: string },
+  baseEnv: NodeJS.ProcessEnv = process.env,
+): { env: NodeJS.ProcessEnv; bin: string } {
+  const providerConfig = settings?.providers?.[providerName];
+
+  // Collect every env key owned by any provider so we can wipe them first
+  const allProviderKeys = new Set<string>(["ANTHROPIC_BASE_URL"]);
+  for (const cfg of Object.values(settings?.providers ?? {})) {
+    for (const key of Object.keys(cfg.env ?? {})) allProviderKeys.add(key);
+  }
+
+  const env: NodeJS.ProcessEnv = { ...baseEnv };
+  for (const key of allProviderKeys) delete env[key];
+
+  // Apply selected provider
+  if (providerConfig?.base_url) env.ANTHROPIC_BASE_URL = providerConfig.base_url;
+  for (const [key, val] of Object.entries(providerConfig?.env ?? {})) {
+    env[key] = val.startsWith("$") ? (baseEnv[val.slice(1)] ?? "") : val;
+  }
+
+  const bin = providerConfig?.bin ?? settings?.claude_bin ?? "claude";
+  return { env, bin };
+}
+
 // ── JSON helpers ─────────────────────────────────────────────────────────────
 
 /** Write data as pretty-printed JSON. */

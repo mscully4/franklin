@@ -14,7 +14,7 @@ import { spawn } from "child_process";
 import { existsSync, mkdirSync, readdirSync, renameSync, createWriteStream, readFileSync } from "fs";
 import { join } from "path";
 import { openDb } from "../db/index.js";
-import { readJson, readJsonWithSchema, writeJson, resolveTaskTimeout, resolveProvider, WorkerResultSchema } from "../config.js";
+import { readJson, readJsonWithSchema, writeJson, resolveTaskTimeout, resolveProvider, buildProviderEnv, WorkerResultSchema } from "../config.js";
 import type { DelegationTask, WorkerResult, DispatchLogEntry, Settings } from "../config.js";
 import log from "../logger.js";
 import { z } from "zod";
@@ -223,6 +223,19 @@ function formatIntegrations(): string {
   }
 }
 
+function formatWebhookRepos(): string {
+  try {
+    const settings = readJson<{ webhook?: { ws_dir?: string; repos?: { github: string; local: string }[] } }>(join(ROOT, "state", "settings.json"));
+    const repos = settings?.webhook?.repos;
+    const wsDir = settings?.webhook?.ws_dir;
+    if (!repos?.length || !wsDir) return "";
+    const list = repos.map(r => `${r.github} (${join(wsDir, r.local)})`).join(", ");
+    return `\nRead-only synced repos (do not commit or push): ${list}.`;
+  } catch {
+    return "";
+  }
+}
+
 // ── Spawn background task ───────────────────────────────────────────────────
 
 export function buildWorkerSpawnConfig(root: string, pluginDir: string | null, promptArg: string): { args: string[]; cwd: string } {
@@ -241,7 +254,6 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   // Resolve provider early so it can be recorded on the quest
   const settings = readJson<Settings>(join(ROOT, "state", "settings.json"));
   const providerName = resolveProvider(task, settings ?? {});
-  const providerConfig = settings?.providers?.[providerName];
 
   let questId: string | null = null;
   if (needsQuest) {
@@ -266,17 +278,12 @@ export function spawnBackgroundTask(task: DelegationTask): void {
   // Build prompt
   const questRef = questId ? ` Quest state: ${ROOT}/state/quests/active/${questId}.json` : "";
   const integrationsStr = formatIntegrations();
-  const promptArg = `Franklin codebase: ${ROOT}. Read ${ROOT}/prompts/worker_wrapper.md and execute. The task ID is ${task.id}.${questRef}${integrationsStr}`;
+  const webhookReposStr = formatWebhookRepos();
+  const promptArg = `Franklin codebase: ${ROOT}. Read ${ROOT}/prompts/worker_wrapper.md and execute. The task ID is ${task.id}.${questRef}${integrationsStr}${webhookReposStr}`;
 
   // Build spawn env from resolved provider
-  const spawnEnv: NodeJS.ProcessEnv = { ...process.env };
-  if (providerConfig?.base_url) spawnEnv.ANTHROPIC_BASE_URL = providerConfig.base_url;
-  for (const [key, val] of Object.entries(providerConfig?.env ?? {})) {
-    spawnEnv[key] = val.startsWith("$") ? (process.env[val.slice(1)] ?? "") : val;
-  }
+  const { env: spawnEnv, bin } = buildProviderEnv(providerName, settings ?? {});
   if (task.model) spawnEnv.ANTHROPIC_MODEL = task.model;
-
-  const bin = providerConfig?.bin ?? settings?.claude_bin ?? "claude";
 
   // Spawn claude process
   const pluginDir = getPluginDir();
@@ -303,7 +310,7 @@ export function spawnBackgroundTask(task: DelegationTask): void {
     logStream.end();
   });
 
-  log.info(` Spawned ${task.type} task ${task.id} (PID ${pid}, timeout ${timeoutMs / 60_000}m)${questId ? ` quest=${questId}` : ""}`);
+  log.info(` Spawned ${task.type} task ${task.id} (PID ${pid}, timeout ${timeoutMs / 60_000}m, provider=${providerName})${questId ? ` quest=${questId}` : ""}`);
 
   logDispatch({
     task_id: task.id,

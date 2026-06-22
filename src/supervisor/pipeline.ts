@@ -6,9 +6,9 @@ import { z } from "zod";
 import { openDb } from "../db/index.js";
 import {
   readJson, readJsonWithSchema, writeJson,
-  ScheduledTaskSchema, SettingsSchema,
+  ScheduledTaskSchema, SettingsSchema, resolveProvider, buildProviderEnv,
 } from "../config.js";
-import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation } from "../config.js";
+import type { DelegationTask, WorkerResult, DispatchLogEntry, Delegation, Settings } from "../config.js";
 import { spawnBackgroundTask } from "./task-manager.js";
 import { getPluginDir } from "./integration-skills.js";
 import log from "../logger.js";
@@ -42,13 +42,13 @@ export function buildBrainSpawnConfig(root: string, playbooksDir: string): { arg
 }
 
 export function runBrain(): void {
-  log.info("Spawning brain...");
+  const settings = readJson<Settings>(SETTINGS_FILE);
+  const providerName = resolveProvider({ type: "brain" }, settings ?? {});
+  const { env: spawnEnv, bin } = buildProviderEnv(providerName, settings ?? {});
+
+  log.info(`Spawning brain (provider=${providerName})...`);
   const { args, cwd } = buildBrainSpawnConfig(ROOT, join(ROOT, "playbooks"));
-  const result = spawnSync(
-    "claude",
-    args,
-    { cwd, stdio: "inherit", timeout: 5 * 60_000 },
-  );
+  const result = spawnSync(bin, args, { cwd, env: spawnEnv, stdio: "inherit", timeout: 5 * 60_000 });
 
   if (result.status !== 0) {
     log.error(` Brain exited with status ${result.status ?? "timeout"}`);
