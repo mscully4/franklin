@@ -241,7 +241,7 @@ function formatWebhookRepos(): string {
 export function buildWorkerSpawnConfig(root: string, pluginDir: string | null, promptArg: string): { args: string[]; cwd: string } {
   const pluginArgs = pluginDir ? ["--plugin-dir", pluginDir] : [];
   return {
-    args: ["--bare", "--dangerously-skip-permissions", "--print", "--output-format", "json", ...pluginArgs, "--add-dir", root, "-p", promptArg],
+    args: ["--dangerously-skip-permissions", "--print", "--output-format", "json", "--setting-sources", "local", ...pluginArgs, "--add-dir", root, "-p", promptArg],
     cwd: "/tmp",
   };
 }

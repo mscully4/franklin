@@ -60,6 +60,15 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
       return db.prepare(`SELECT * FROM dispatch_log WHERE type = 'scheduled' ORDER BY id DESC LIMIT ?`).all(limit) as Array<Record<string, unknown>>;
     },
 
+    wasRecentlyDispatched(dedupKey: string, windowMs: number): boolean {
+      if (!dedupKey) return false;
+      const cutoff = new Date(Date.now() - windowMs).toISOString();
+      const row = db.prepare(
+        `SELECT 1 FROM dispatch_log WHERE dedup_key = ? AND dispatched_at > ? LIMIT 1`
+      ).get(dedupKey, cutoff);
+      return !!row;
+    },
+
     pruneDispatchLog(days = 30): number {
       const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
       const result = db.prepare(`DELETE FROM dispatch_log WHERE completed_at < ?`).run(cutoff);

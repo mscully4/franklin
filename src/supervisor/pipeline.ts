@@ -319,6 +319,20 @@ export function dispatchTasks(delegation: Delegation): void {
       continue;
     }
 
+    // Suppress duplicate dispatches — same dedup_key seen within the window.
+    // dm_reply: 6h (Discord reconnects replay recent messages)
+    // everything else: 30m (brain/signal re-emission guard)
+    const dedupWindowMs = task.type === "dm_reply" ? 6 * 60 * 60_000 : 30 * 60_000;
+    if (task.dedup_key) {
+      const dedupDb = openDb();
+      const seen = dedupDb.wasRecentlyDispatched(task.dedup_key, dedupWindowMs);
+      dedupDb.close();
+      if (seen) {
+        log.warn(` Skipping duplicate ${task.type} task ${task.id} (dedup_key: ${task.dedup_key})`);
+        continue;
+      }
+    }
+
     spawnBackgroundTask(task);
   }
 }

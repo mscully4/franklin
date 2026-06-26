@@ -36,7 +36,7 @@ export function isScoutDue(name: string, lastRun: LastRun): boolean {
   return Date.now() - new Date(lastRanAt).getTime() >= intervalMs;
 }
 
-type IntegrationEntry = string | { name: string; description?: string; env?: string[] };
+type IntegrationEntry = string | { name: string; bin?: string; description?: string; env?: string[]; skillLocation?: string };
 
 function resolveIntegrationName(entry: IntegrationEntry): string {
   return typeof entry === "string" ? entry : entry.name;
@@ -55,14 +55,18 @@ export function checkIntegrations(): void {
     const name = resolveIntegrationName(entry);
     if (name === "discord") continue; // transport, not a CLI
 
-    // Check CLI binary exists
-    try {
-      execSync(`which ${name}`, { stdio: "ignore", timeout: 5_000 });
-      log.info(` ✓ ${name} CLI`);
-    } catch {
-      log.error(` ✗ ${name} CLI — not found on $PATH`);
-      failures.push(`${name} (CLI missing)`);
-      continue; // skip env checks if binary is missing
+    const bin = typeof entry === "string" ? entry : entry.bin;
+
+    // Check CLI binary exists (skip if no bin specified)
+    if (bin) {
+      try {
+        execSync(`which ${bin}`, { stdio: "ignore", timeout: 5_000 });
+        log.info(` ✓ ${name} CLI`);
+      } catch {
+        log.error(` ✗ ${name} CLI (${bin}) — not found on $PATH`);
+        failures.push(`${name} (CLI missing)`);
+        continue; // skip env checks if binary is missing
+      }
     }
 
     // Check required env vars

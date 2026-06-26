@@ -25,12 +25,12 @@
     },
     "deepseek": {
       "bin": "claude",
-      "base_url": "https://api.deepseek.com",
+      "base_url": "https://api.deepseek.com/anthropic",
       "env": {
         "ANTHROPIC_API_KEY": "$DEEPSEEK_API_KEY",
-        "ANTHROPIC_MODEL": "deepseek-v4-pro[1m]",
-        "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro[1m]",
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro[1m]",
+        "ANTHROPIC_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL": "deepseek-v4-pro",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "deepseek-v4-pro",
         "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
         "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash"
       }
@@ -49,31 +49,31 @@
       "provider": "deepseek"
     }
   ],
-  "model_routing": {
-    "dm_reply": "deepseek",
-    "email_notify": "deepseek"
-  },
-  "feature_flags": {
+"feature_flags": {
     "skip_docker": true
   },
   "integrations": [
     "discord",
     {
       "name": "gws",
+      "bin": "gws",
       "description": "Google Workspace CLI"
     },
     {
       "name": "mmoney",
+      "bin": "mmoney",
       "description": "Monarch Money finance CLI",
       "skillLocation": "./skills/mmoney"
     },
     {
       "name": "agent-browser",
+      "bin": "agent-browser",
       "description": "Browser automation CLI",
       "skillLocation": "https://raw.githubusercontent.com/mscully4/claude-code-plugins/refs/heads/main/skills/agent-browser/SKILL.md"
     },
     {
       "name": "hassio",
+      "bin": "hassio",
       "description": "Home Assistant smart home CLI",
       "env": [
         "HASSIO_URL",
@@ -83,6 +83,7 @@
     },
     {
       "name": "immich",
+      "bin": "immich",
       "description": "Immich self-hosted photo/video management CLI",
       "env": [
         "IMMICH_SERVER",
@@ -92,7 +93,18 @@
     },
     {
       "name": "openscad",
+      "bin": "openscad",
       "description": "OpenSCAD 3D CAD modeler CLI"
+    },
+    {
+      "name": "google-health",
+      "description": "Google Health API (Fitbit data via HTTP)",
+      "skillLocation": "./skills/google-health",
+      "env": [
+        "GOOGLE_HEALTH_CLIENT_ID",
+        "GOOGLE_HEALTH_CLIENT_SECRET",
+        "GOOGLE_HEALTH_REFRESH_TOKEN"
+      ]
     }
   ],
   "disabled_scouts": [

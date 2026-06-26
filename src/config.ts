@@ -153,17 +153,14 @@ export function buildProviderEnv(
 ): { env: NodeJS.ProcessEnv; bin: string } {
   const providerConfig = settings?.providers?.[providerName];
 
-  // Collect every env key owned by any provider so we can wipe them first
-  const allProviderKeys = new Set<string>(["ANTHROPIC_BASE_URL"]);
-  for (const cfg of Object.values(settings?.providers ?? {})) {
-    for (const key of Object.keys(cfg.env ?? {})) allProviderKeys.add(key);
-  }
-
   const env: NodeJS.ProcessEnv = { ...baseEnv };
-  for (const key of allProviderKeys) delete env[key];
 
-  // Apply selected provider
-  if (providerConfig?.base_url) env.ANTHROPIC_BASE_URL = providerConfig.base_url;
+  // Clear ANTHROPIC_BASE_URL unless this provider sets a custom one, so a
+  // stale base URL from the system env never bleeds through to a default provider.
+  if (!providerConfig?.base_url) delete env.ANTHROPIC_BASE_URL;
+  else env.ANTHROPIC_BASE_URL = providerConfig.base_url;
+
+  // Apply this provider's env vars, expanding $VAR references against baseEnv.
   for (const [key, val] of Object.entries(providerConfig?.env ?? {})) {
     env[key] = val.startsWith("$") ? (baseEnv[val.slice(1)] ?? "") : val;
   }

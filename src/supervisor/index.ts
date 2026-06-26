@@ -130,7 +130,16 @@ function runCycle(startedAt: string): void {
       log.debug("No signals — skipping brain");
     }
 
-    const allTasks = [...dmTasks, ...scheduledTasks, ...brainTasks];
+    // The brain must only emit email_notify / dm_reply / quest tasks.
+    // Dropping "scheduled" here prevents the brain from re-running scheduled
+    // tasks it reads from scheduled_tasks.json — those are the scheduler's domain.
+    const BRAIN_ALLOWED_TYPES = new Set(["email_notify", "dm_reply", "quest"]);
+    const filteredBrainTasks = brainTasks.filter(t => BRAIN_ALLOWED_TYPES.has(t.type));
+    if (filteredBrainTasks.length < brainTasks.length) {
+      log.warn(` Brain emitted ${brainTasks.length - filteredBrainTasks.length} task(s) with type "scheduled" — dropped (scheduler owns those)`);
+    }
+
+    const allTasks = [...dmTasks, ...scheduledTasks, ...filteredBrainTasks];
 
     if (allTasks.length) {
       const idDb = openDb();
@@ -142,7 +151,7 @@ function runCycle(startedAt: string): void {
     if (allTasks.length) {
       const merged = { generated_at: new Date().toISOString(), tasks: allTasks };
       writeJson(DELEGATION_FILE, merged);
-      log.info(` Dispatching ${allTasks.length} task(s) (${dmTasks.length} dm, ${scheduledTasks.length} sched, ${brainTasks.length} brain)...`);
+      log.info(` Dispatching ${allTasks.length} task(s) (${dmTasks.length} dm, ${scheduledTasks.length} sched, ${filteredBrainTasks.length} brain)...`);
       dispatchTasks(merged);
     } else {
       log.debug("No tasks this cycle");
