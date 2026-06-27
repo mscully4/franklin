@@ -118,9 +118,15 @@ export const SettingsSchema = z.object({
       z.string(),
       z.object({
         name: z.string(),
+        bin: z.string().optional(),
         description: z.string().optional(),
         env: z.array(z.string()).optional(),
         skillLocation: z.string().optional(),
+        healthCheck: z.object({
+          command: z.string(),
+          expect: z.string().optional(),
+          notExpect: z.string().optional(),
+        }).optional(),
       }),
     ]),
   ),

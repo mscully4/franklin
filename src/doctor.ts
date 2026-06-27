@@ -17,9 +17,34 @@ import { execSync } from "child_process";
 import Database from "better-sqlite3";
 import { SettingsSchema } from "./schemas.js";
 
-// ── Paths ────────────────────────────────────────────────────────────────────
+// ── Load .env into process.env ────────────────────────────────────────────────
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ENV_FILE = join(ROOT, ".env");
+
+function loadEnvFile(path: string): void {
+  if (!existsSync(path)) return;
+  const lines = readFileSync(path, "utf8").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eq = trimmed.indexOf("=");
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let val = trimmed.slice(eq + 1).trim();
+    // Strip surrounding quotes
+    if ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"'))) {
+      val = val.slice(1, -1);
+    }
+    if (!process.env[key]) {
+      process.env[key] = val;
+    }
+  }
+}
+loadEnvFile(ENV_FILE);
+
+// ── Paths ────────────────────────────────────────────────────────────────────
+
 const STATE = join(ROOT, "state");
 const SETTINGS_FILE = join(STATE, "settings.json");
 const LOCK_FILE = join(STATE, "franklin.lock");
@@ -44,7 +69,7 @@ interface CategoryResult {
   checks: CheckResult[];
 }
 
-type IntegrationEntry = string | { name: string; description?: string; env?: string[]; skillLocation?: string };
+type IntegrationEntry = string | { name: string; bin?: string; description?: string; env?: string[]; skillLocation?: string; healthCheck?: { command: string; expect?: string; notExpect?: string } };
 
 interface SettingsLike {
   integrations?: IntegrationEntry[];
@@ -143,25 +168,26 @@ function checkIntegrations(settings: SettingsLike | null): CategoryResult {
     const name = resolveIntegrationName(entry);
     if (name === "discord") continue; // transport, not a CLI
 
-    // Check CLI binary
+    // Check CLI binary (only if bin is defined or entry is a string)
+    const bin = typeof entry === "string" ? entry : entry.bin;
     let cliOk = false;
-    try {
-      execSync(`which ${name}`, { stdio: "ignore", timeout: 5_000 });
-      checks.push(ok(`${name} CLI`, `Found on $PATH`));
-      cliOk = true;
-    } catch {
-      checks.push(err(`${name} CLI`, "Not found on $PATH"));
+    if (bin) {
+      try {
+        execSync(`which ${bin}`, { stdio: "ignore", timeout: 5_000 });
+        checks.push(ok(`${name} CLI`, `Found on $PATH`));
+        cliOk = true;
+      } catch {
+        checks.push(err(`${name} CLI`, "Not found on $PATH"));
+      }
     }
 
-    // Check env vars (only if CLI exists)
+    // Check env vars (warn/error independently of CLI presence)
     if (typeof entry !== "string" && entry.env) {
       for (const v of entry.env) {
         if (process.env[v]) {
           checks.push(ok(`${name}: ${v}`, "Set"));
-        } else if (cliOk) {
-          checks.push(warn(`${name}: ${v}`, "Not set"));
         } else {
-          checks.push(skip(`${name}: ${v}`, "Skipped — CLI not found"));
+          checks.push(warn(`${name}: ${v}`, "Not set"));
         }
       }
     }
@@ -181,6 +207,46 @@ function checkIntegrations(settings: SettingsLike | null): CategoryResult {
         } else {
           checks.push(err(`${name} skill`, `${loc} not found`));
         }
+      }
+    }
+
+    // Health check
+    if (typeof entry !== "string" && entry.healthCheck) {
+      const hc = entry.healthCheck;
+      try {
+        const out = execSync(`set -a; source "${ENV_FILE}"; set +a; ${hc.command}`, { encoding: "utf8", timeout: 10_000, shell: "/bin/bash" });
+        const combined = out.trim();
+
+        const failures: string[] = [];
+
+        if (hc.expect) {
+          try {
+            if (!new RegExp(hc.expect).test(combined)) {
+              failures.push(`expected /${hc.expect}/ not found in output`);
+            }
+          } catch (e) {
+            failures.push(`invalid expect regex: ${hc.expect}`);
+          }
+        }
+
+        if (hc.notExpect) {
+          try {
+            if (new RegExp(hc.notExpect).test(combined)) {
+              failures.push(`notExpect /${hc.notExpect}/ matched in output`);
+            }
+          } catch (e) {
+            failures.push(`invalid notExpect regex: ${hc.notExpect}`);
+          }
+        }
+
+        if (failures.length > 0) {
+          checks.push(err(`${name} health`, failures.join("; ")));
+        } else {
+          checks.push(ok(`${name} health`, "Passed"));
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        checks.push(err(`${name} health`, `Command failed — ${msg}`));
       }
     }
   }

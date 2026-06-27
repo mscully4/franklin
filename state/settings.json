@@ -57,29 +57,35 @@
     {
       "name": "gws",
       "bin": "gws",
-      "description": "Google Workspace CLI"
+      "description": "Google Workspace CLI",
+      "healthCheck": {"command": "gws auth status"}
     },
     {
       "name": "mmoney",
       "bin": "mmoney",
       "description": "Monarch Money finance CLI",
-      "skillLocation": "./skills/mmoney"
+      "skillLocation": "./skills/mmoney",
+      "healthCheck": {"command": "mmoney auth status"}
     },
     {
       "name": "agent-browser",
       "bin": "agent-browser",
       "description": "Browser automation CLI",
-      "skillLocation": "https://raw.githubusercontent.com/mscully4/claude-code-plugins/refs/heads/main/skills/agent-browser/SKILL.md"
+      "skillLocation": "./skills/agent-browser-cloak",
+      "healthCheck": {"command": "curl -sf http://localhost:9222/json/version", "expect": "\"Browser\""}
     },
     {
       "name": "hassio",
-      "bin": "hassio",
+      "bin": "hass-cli",
       "description": "Home Assistant smart home CLI",
       "env": [
         "HASSIO_URL",
-        "HASSIO_TOKEN"
+        "HASSIO_TOKEN",
+        "HASS_SERVER",
+        "HASS_TOKEN"
       ],
-      "skillLocation": "./skills/hassio"
+      "skillLocation": "./skills/hassio",
+      "healthCheck": {"command": "hass-cli config release", "expect": "[0-9]+\\.[0-9]+"}
     },
     {
       "name": "immich",
@@ -110,7 +116,8 @@
       "name": "calibre",
       "bin": "calibredb",
       "description": "Calibre e-book library and Kindle email delivery",
-      "skillLocation": "./skills/calibre"
+      "skillLocation": "./skills/calibre",
+      "healthCheck": {"command": "calibredb --library-path=$HOME/calibre-library list --limit 1", "notExpect": "Error|Traceback"}
     }
   ],
   "disabled_scouts": [

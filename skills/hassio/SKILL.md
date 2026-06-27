@@ -14,157 +14,158 @@ triggers:
   - "set the thermostat"
   - "close the garage"
 metadata:
-  version: 0.1.0
+  version: 0.2.0
   requires:
     env:
-      - HASSIO_URL
-      - HASSIO_TOKEN
+      - HASS_SERVER
+      - HASS_TOKEN
     bins:
-      - hassio
+      - hass-cli
 ---
 
-# hassio — Home Assistant CLI
+# hass-cli — Home Assistant CLI
 
-Use the `hassio` CLI to query and control smart home devices via the Home Assistant REST + WebSocket API.
+Use `hass-cli` (the official [home-assistant-cli](https://github.com/home-assistant-ecosystem/home-assistant-cli)) to query and control smart home devices.
 
 ## Authentication
 
-`hassio` reads `HASSIO_URL` and `HASSIO_TOKEN` from the environment. These are already set — no config needed.
+`hass-cli` reads `HASS_SERVER` and `HASS_TOKEN` from the environment. These are already set — no config needed.
 
 ```bash
-hassio info --format toon   # verify connectivity
+hass-cli config release   # verify connectivity
 ```
 
 ## Output Format
 
-Always use `--format toon` — it's the most token-efficient output format.
+Use `-o yaml` for readable output on entity details. Use default table format for lists.
 
 ## Discovery Workflow
 
 Don't guess entity IDs. Discover what's available:
 
 ```bash
-# 1. What domains exist?
-hassio entities --domains --format toon
+# 1. What entities exist?
+hass-cli state list
 
-# 2. List entities in a domain
-hassio entities --domain switch --format toon
-hassio entities --domain light --format toon
-hassio entities --domain sensor --format toon
+# 2. What domains are in use?
+hass-cli state list --no-headers | awk '{print $1}' | cut -d. -f1 | sort -u
 
-# 3. Inspect an entity for full details (attributes, state, last changed)
-hassio inspect switch.garage_light --format toon
+# 3. Filter to a specific domain
+hass-cli state list --filter 'entity_id like "switch.%"'
+hass-cli state list --filter 'entity_id like "light.%"'
+hass-cli state list --filter 'entity_id like "sensor.%"'
 
-# 4. What physical devices are registered? (manufacturer, model, area)
-hassio registries --devices --format toon
+# 4. Inspect an entity (YAML for full details)
+hass-cli state get -o yaml switch.garage_light
+
+# 5. List devices
+hass-cli device list
 ```
 
-Entity state alone won't tell you a switch is a TP-Link HS200 in the garage — the device registry will.
+## Commands
 
-## Commands by Domain
-
-### Switches & Lights
+### State (read entities)
 
 ```bash
-hassio switch on switch.garage_light
-hassio switch off switch.garage_light
-hassio switch toggle switch.garage_light
-hassio light on light.living_room --brightness 128
+hass-cli state list                                          # All entities
+hass-cli state list --filter 'entity_id like "light.%"'      # Lights only
+hass-cli state get -o yaml light.living_room                 # Single entity
+hass-cli state list --filter 'state == "on"'                 # Entities that are on
 ```
 
-### Sensors & Binary Sensors (read-only)
+### Service Calls (control)
 
 ```bash
-hassio entities --domain sensor --format toon
-hassio entities --domain binary_sensor --format toon
-hassio sensor --format toon
+# List available services
+hass-cli service list
+hass-cli service list --filter 'domain == "switch"'
+
+# Call a service
+hass-cli service call switch.turn_on --arguments entity_id=switch.garage_light
+hass-cli service call switch.turn_off --arguments entity_id=switch.garage_light
+hass-cli service call switch.toggle --arguments entity_id=switch.garage_light
+hass-cli service call light.turn_on --arguments 'entity_id=light.living_room,brightness=128'
+hass-cli service call climate.set_temperature --arguments 'entity_id=climate.living_room,temperature=72'
+hass-cli service call cover.open_cover --arguments entity_id=cover.garage_door
+hass-cli service call cover.close_cover --arguments entity_id=cover.garage_door
 ```
 
-### Climate (thermostats, AC)
+### Devices & Areas
 
 ```bash
-hassio climate --format toon
-hassio climate set climate.living_room --temperature 72
-hassio climate set_hvac_mode climate.living_room --mode heat
+hass-cli device list                          # All devices
+hass-cli device list --filter 'area_id=="kitchen"'  # Kitchen devices
+hass-cli area list                            # All areas
 ```
 
-### Covers (blinds, garage doors)
+### System
 
 ```bash
-hassio cover open cover.garage_door
-hassio cover close cover.garage_door
+hass-cli config release                       # HA version
+hass-cli system health                        # System health
+hass-cli system log                           # Recent errors
 ```
 
-### Device Trackers & Persons
+### Raw API
 
 ```bash
-hassio device-tracker --format toon
-hassio persons --format toon
+hass-cli raw get /api/states                  # Raw API call
+hass-cli raw get /api/config                  # Config dump
 ```
 
-### Weather & Sun
+### History
 
 ```bash
-hassio weather --format toon
-hassio sun --format toon
-```
-
-### Query (LLM-friendly search)
-
-```bash
-hassio query "lights that are on" --format toon
-hassio query "temperature sensors" --format toon
-```
-
-### Service Calls
-
-For anything not covered by a domain subcommand, call the HA service directly:
-
-```bash
-hassio services --format toon
-hassio call-service light turn_on --params '{"entity_id": "light.living_room", "brightness": 128}'
+hass-cli state history --since 50m light.kitchen_light_1
+hass-cli state history --since 2026-06-27
 ```
 
 ## Safety Rules
 
-- **Read-only by default** — `entities`, `inspect`, `registries`, `query`, `sensor`, `weather`, `sun`, `persons`, `device-tracker` are always safe.
-- **Write only when instructed** — `toggle`, `set`, `call-service` are fine when the task explicitly asks for them. No need to confirm; just do it.
-- **Use `--read-only` flag** when exploring unfamiliar domains — it blocks all state-changing calls at the CLI level.
-- **Batch cautiously** — `hassio batch` can chain multiple service calls. Review the full batch before running.
+- **Read-only by default** — `state list`, `state get`, `device list`, `area list`, `config`, `system health` are always safe.
+- **Write only when instructed** — `service call` is fine when the task explicitly asks for it. No need to confirm; just do it.
+- **Batch cautiously** — chain multiple calls in one script. Review before running.
 
 ## Common Patterns
 
 ### Quick status check
 
 ```bash
-hassio query "lights and switches that are on" --format toon
-hassio query "doors and windows that are open" --format toon
+hass-cli state list --filter 'domain == "light" and state == "on"'
+hass-cli state list --filter 'domain == "binary_sensor" and state == "on"'
 ```
 
 ### Check a room
 
 ```bash
-hassio registries --devices --format toon | grep -i kitchen
-hassio query "kitchen" --format toon
+hass-cli device list | grep -i kitchen
 ```
 
 ### Turn everything off
 
 ```bash
-hassio query "lights that are on" --format toon
-# Review the list, then toggle individually or use:
-hassio call-service light turn_off --params '{"entity_id": "all"}'
+hass-cli state list --filter 'domain == "light" and state == "on"'
+# Review the list, then toggle individually
+```
+
+### Who's home?
+
+```bash
+hass-cli state list --filter 'domain == "person"'
 ```
 
 ## Quick Reference
 
 | Task | Command |
 |---|---|
-| What's in my house? | `hassio registries --devices --format toon` |
-| What domains exist? | `hassio entities --domains --format toon` |
-| List switches | `hassio entities --domain switch --format toon` |
-| Inspect entity | `hassio inspect <entity_id> --format toon` |
-| Toggle a switch | `hassio switch toggle <entity_id>` |
-| Set thermostat | `hassio climate set <entity_id> --temperature 72` |
-| Find by name | `hassio query "garage" --format toon` |
-| System info | `hassio info --format toon` |
+| HA version | `hass-cli config release` |
+| System health | `hass-cli system health` |
+| All entities | `hass-cli state list` |
+| Lights only | `hass-cli state list --filter 'entity_id like "light.%"'` |
+| Inspect entity | `hass-cli state get -o yaml <entity_id>` |
+| Toggle switch | `hass-cli service call switch.toggle --arguments entity_id=<id>` |
+| Turn on light | `hass-cli service call light.turn_on --arguments entity_id=<id>` |
+| Set brightness | `hass-cli service call light.turn_on --arguments 'entity_id=<id>,brightness=128'` |
+| Set thermostat | `hass-cli service call climate.set_temperature --arguments 'entity_id=<id>,temperature=72'` |
+| Open garage | `hass-cli service call cover.open_cover --arguments entity_id=<id>` |
+| List devices | `hass-cli device list` |
