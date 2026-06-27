@@ -75,6 +75,24 @@ export function makeTaskMethods(db: InstanceType<typeof Database>) {
       return result.changes;
     },
 
+    // ── Discord seen messages ────────────────────────────────────────────────
+
+    isDiscordMessageSeen(messageId: string): boolean {
+      const row = db.prepare(`SELECT 1 FROM discord_seen_messages WHERE message_id = ?`).get(messageId);
+      return !!row;
+    },
+
+    markDiscordMessageSeen(messageId: string): void {
+      db.prepare(`INSERT OR IGNORE INTO discord_seen_messages (message_id, seen_at) VALUES (?, ?)`)
+        .run(messageId, new Date().toISOString());
+    },
+
+    pruneDiscordSeenMessages(days = 7): number {
+      const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+      const result = db.prepare(`DELETE FROM discord_seen_messages WHERE seen_at < ?`).run(cutoff);
+      return result.changes;
+    },
+
     // ── Quests ──────────────────────────────────────────────────────────────
 
     upsertQuest(quest: {

@@ -171,8 +171,10 @@ function runCycle(startedAt: string): void {
     if (lastRun.last_prune_date !== todayLocal) {
       const pruneDb = openDb();
       const dispatches = pruneDb.pruneDispatchLog(30);
+      const seenMsgs = pruneDb.pruneDiscordSeenMessages(7);
       pruneDb.close();
       if (dispatches) log.info(` Pruned ${dispatches} dispatch entries`);
+      if (seenMsgs) log.info(` Pruned ${seenMsgs} discord seen message entries`);
       lastRun.last_prune_date = todayLocal;
     }
 

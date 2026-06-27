@@ -602,8 +602,9 @@ function getDiscordToken(): string {
 
     const inboxFile = join(BRAIN_INPUT, "discord_inbox.json");
     mkdirSync(BRAIN_INPUT, { recursive: true });
-    const inbox = readJson<Array<Record<string, unknown>>>(inboxFile) ?? [];
-    if (!inbox.some((e) => e.event_ts === msg.id)) {
+    if (!db.isDiscordMessageSeen(msg.id)) {
+      db.markDiscordMessageSeen(msg.id);
+      const inbox = readJson<Array<Record<string, unknown>>>(inboxFile) ?? [];
       inbox.push({
         event_ts: msg.id,
         channel: threadId,

@@ -123,6 +123,12 @@ const SCHEMA = `
     value            INTEGER NOT NULL DEFAULT 0
   );
   INSERT OR IGNORE INTO counters (name, value) VALUES ('task_id', 0);
+
+  CREATE TABLE IF NOT EXISTS discord_seen_messages (
+    message_id  TEXT PRIMARY KEY,
+    seen_at     TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS discord_seen_messages_seen_at ON discord_seen_messages(seen_at);
 `;
 
 function applyMigrations(db: InstanceType<typeof Database>): void {
